@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v0.9.4.1
+#                         |___/          |_|                     |___/  v1.1
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -39,6 +39,7 @@ from websocket import WebSocketApp, enableTrace
 #Discord Dependencies
 from discord.ext import tasks
 import discord
+from discord import app_commands
 import time
 
 #.env Config Setup + Metadata
@@ -94,6 +95,8 @@ if(DiscordJoinOnly == "false"):
 intents = discord.Intents.default()
 intents.message_content = True
 DiscordClient = discord.Client(intents=intents)
+tree = app_commands.CommandTree(DiscordClient)
+DiscordGuildID = 1171964435741544498
 
 # Make sure all of the directories exist before we start creating files
 if not os.path.exists(ArchDataDirectory):
@@ -256,6 +259,7 @@ async def on_ready():
     global DebugChannel
     DebugChannel = DiscordClient.get_channel(DiscordDebugChannel)
     await DebugChannel.send('Bot connected. Debug control - Online.')
+    await tree.sync(guild=discord.Object(id=DiscordGuildID))
 
     #Start background tasks
     CheckArchHost.start()
@@ -276,23 +280,28 @@ async def on_message(message):
     
     # Registers user for a alot in Archipelago
     if message.content.startswith('$register'):
-        await Command_Register(message)
+        ArchSlot = message.content
+        ArchSlot = ArchSlot.replace("$register ","")
+        Status = await Command_Register(str(message.author),ArchSlot)
+        await SendMainChannelMessage(Status)
 
     # Clears registration file for user
     if message.content.startswith('$clearreg'):
-        await Command_ClearReg(message)
+        Status = await Command_ClearReg(str(message.author))
+        await SendMainChannelMessage(Status)
 
     # Opens a discord DM with the user, and fires off the Katchmeup process
     # When the user asks, catch them up on checks they're registered for
     ## Yoinks their registration file, scans through it, then find the related ItemQueue file to scan through 
     if message.content.startswith('$ketchmeup'):
-        await Command_KetchMeUp(message)
+        await Command_KetchMeUp(message.author)
     
     # When the user asks, catch them up on the specified game
     ## Yoinks the specified ItemQueue file, scans through it, then sends the contents to the user
     ## Does NOT delete the file, as it's assumed the other users will want to read the file as well
     if message.content.startswith('$groupcheck'):
-        await Command_GroupCheck(message.author, message.content)
+        game = (message.content).split('$groupcheck ')
+        await Command_GroupCheck(message.author, game[1])
     
     if message.content.startswith('$hints'):
         await Command_Hints(message.author)
@@ -428,6 +437,64 @@ async def ProcessChatQueue():
         chatmessage = chat_queue.get()
         await SendMainChannelMessage(chatmessage['data'][0]['text'])
 
+@tree.command(name="register",
+    description="Registers you for AP slot",
+    guild=discord.Object(id=DiscordGuildID)
+)
+async def first_command(interaction,slot:str):
+    Status = await Command_Register(str(interaction.user),slot)    
+    await interaction.response.send_message(content=Status,ephemeral=True)
+
+@tree.command(name="clearreg",
+    description="Clears your registration file",
+    guild=discord.Object(id=DiscordGuildID)
+)
+async def first_command(interaction):
+    Status = await Command_ClearReg(str(interaction.user))
+    await interaction.response.send_message(content=Status,ephemeral=True)
+    
+@tree.command(name="ketchmeup",
+    description="Ketches the user up with missed items",
+    guild=discord.Object(id=DiscordGuildID)
+)
+async def first_command(interaction):
+    await interaction.user.create_dm()
+    UserDM = interaction.user
+    await Command_KetchMeUp(UserDM)
+    await interaction.response.send_message(content="Sending your missed items... Please Hold.",ephemeral=True)
+
+@tree.command(name="groupcheck",
+    description="Ketches the user up with group game missed items",
+    guild=discord.Object(id=DiscordGuildID)
+)
+async def first_command(interaction, groupslot:str):
+    await Command_GroupCheck(interaction.user, groupslot)
+    await interaction.response.send_message(content="Sending group missed items... Please Hold.",ephemeral=True)
+
+@tree.command(name="deathcount",
+    description="Posts a deathcount chart and graph",
+    guild=discord.Object(id=DiscordGuildID)
+)
+async def first_command(interaction):
+    await Command_DeathCount()
+    await interaction.response.send_message(content="Deathcount")
+
+@tree.command(name="checkcount",
+    description="Posts a check chart",
+    guild=discord.Object(id=DiscordGuildID)
+)
+async def first_command(interaction):
+    await Command_CheckCount()
+    await interaction.response.send_message(content="Checkcount:")
+
+@tree.command(name="checkgraph",
+    description="Posts a check graph",
+    guild=discord.Object(id=DiscordGuildID)
+)
+async def first_command(interaction):
+    await Command_CheckGraph()
+    await interaction.response.send_message(content="Checkgraph:")
+
 async def SendMainChannelMessage(message):
     await MainChannel.send(message)
 
@@ -437,11 +504,8 @@ async def SendDebugChannelMessage(message):
 async def SendDMMessage(message,user):
     await MainChannel.send(message)
 
-async def Command_Register(message):
+async def Command_Register(Sender:str, ArchSlot:str):
     try:
-        ArchSlot = message.content
-        ArchSlot = ArchSlot.replace("$register ","")
-        Sender = str(message.author)
         RegistrationFile = RegistrationDirectory + Sender + ".csv"
         RegistrationContent = ArchSlot + "\n"
         # Generate the Registration File if it doesn't exist
@@ -453,32 +517,32 @@ async def Command_Register(message):
         o.close()
         # Check the registration file for ArchSlot, if they are not registered; do so. If they already are; tell them.
         if not ArchSlot in line:
-            formattedmessage = "Registering " + Sender + " for slot " + ArchSlot
-            await SendMainChannelMessage(formattedmessage)
             o = open(RegistrationFile, "a")
             o.write(RegistrationContent)
             o.close()
+            return "You've been registered for " + ArchSlot + "!"
         else:
-            await SendMainChannelMessage("You're already registered for that slot.")
+            return "You're already registered for that slot."
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN REGISTER <@"+DiscordAlertUserID+">")
 
-async def Command_ClearReg(message):
+async def Command_ClearReg(Sender:str):
     try:
-        Sender = str(message.author)
         RegistrationFile = RegistrationDirectory + Sender + ".csv"
+        if not os.path.exists(RegistrationFile):
+            return "You're not registered for any slots :("
         os.remove(RegistrationFile)
+        return "Your registration has been cleared."
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN CLEARREG <@"+DiscordAlertUserID+">")
 
-async def Command_KetchMeUp(message):
+async def Command_KetchMeUp(User):
     try:
-        await message.author.create_dm()
-        RegistrationFile = RegistrationDirectory + message.author.name + ".csv"
+        RegistrationFile = RegistrationDirectory + str(User) + ".csv"
         if not os.path.isfile(RegistrationFile):
-            await message.author.dm_channel.send("You've not registered for a slot : (")
+            await User.send("You've not registered for a slot : (")
         else:
             r = open(RegistrationFile,"r")
             RegistrationLines = r.readlines()
@@ -486,20 +550,20 @@ async def Command_KetchMeUp(message):
             for reglines in RegistrationLines:
                 ItemQueueFile = ItemQueueDirectory + reglines.strip() + ".csv"
                 if not os.path.isfile(ItemQueueFile):
-                    await message.author.dm_channel.send("There are no items for " + reglines.strip() + " :/")
+                    await User.send("There are no items for " + reglines.strip() + " :/")
                     continue
                 k = open(ItemQueueFile, "r")
                 ItemQueueLines = k.readlines()
                 k.close()
                 os.remove(ItemQueueFile)
-
+        
                 YouWidth = 0
                 ItemWidth = 0
                 SenderWidth = 0
                 YouArray = [0]
                 ItemArray = [0]
                 SenderArray = [0]
-
+        
                 for line in ItemQueueLines:
                     YouArray.append(len(line.split("||")[0]))
                     ItemArray.append(len(line.split("||")[1]))
@@ -508,16 +572,16 @@ async def Command_KetchMeUp(message):
                 YouArray.sort(reverse=True)
                 ItemArray.sort(reverse=True)
                 SenderArray.sort(reverse=True)
-
+        
                 YouWidth = YouArray[0]
                 ItemWidth = ItemArray[0]
                 SenderWidth = SenderArray[0]
-
+        
                 You = "You"
                 Item = "Item"
                 Sender = "Sender"
                 Location = "Location"
-
+        
                 ketchupmessage = "```" + You.ljust(YouWidth) + " || " + Item.ljust(ItemWidth) + " || " + Sender.ljust(SenderWidth) + " || " + Location + "\n"
                 for line in ItemQueueLines:
                     You = line.split("||")[0].strip()
@@ -528,20 +592,19 @@ async def Command_KetchMeUp(message):
                     
                     if len(ketchupmessage) > 1500:
                         ketchupmessage = ketchupmessage + "```"
-                        await message.author.dm_channel.send(ketchupmessage)
+                        await User.send(ketchupmessage)
                         ketchupmessage = "```"
                 ketchupmessage = ketchupmessage + "```"
-                await message.author.dm_channel.send(ketchupmessage)
+                await User.send(ketchupmessage)
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN KETCHMEUP <@"+DiscordAlertUserID+">")
 
-async def Command_GroupCheck(DMauthor, message):
+async def Command_GroupCheck(DMauthor, game):
     try:
-        game = message.split('$groupcheck ')
-        ItemQueueFile = ItemQueueDirectory + game[1] + ".csv"
+        ItemQueueFile = ItemQueueDirectory + game + ".csv"
         if not os.path.isfile(ItemQueueFile):
-            await DMauthor.dm_channel.send("There are no items for " + game[1] + " :/")
+            await DMauthor.send("There are no items for " + game[1] + " :/")
         else:
             k = open(ItemQueueFile, "r")
             ItemQueueLines = k.readlines()
@@ -552,10 +615,10 @@ async def Command_GroupCheck(DMauthor, message):
                 ketchupmessage = ketchupmessage + line
                 if len(ketchupmessage) > 1900:
                     ketchupmessage = ketchupmessage + "```"
-                    await DMauthor.dm_channel.send(ketchupmessage)
+                    await DMauthor.send(ketchupmessage)
                     ketchupmessage = "```"
             ketchupmessage = ketchupmessage + "```"
-            await DMauthor.dm_channel.send(ketchupmessage)
+            await DMauthor.send(ketchupmessage)
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN GROUPCHECK <@"+DiscordAlertUserID+">")

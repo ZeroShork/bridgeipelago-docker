@@ -4,6 +4,7 @@ RegistrationData/
 logs/
 *.png
 ArchData/
+bot.py
 
 
 # Byte-compiled / optimized / DLL files
