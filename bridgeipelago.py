@@ -96,7 +96,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 DiscordClient = discord.Client(intents=intents)
 tree = app_commands.CommandTree(DiscordClient)
-DiscordGuildID = 1171964435741544498
+
+#TO DO - Central Control for bot I'll just leave this in for now.
+#DiscordGuildID = 1171964435741544498
 
 # Make sure all of the directories exist before we start creating files
 if not os.path.exists(ArchDataDirectory):
@@ -198,6 +200,13 @@ class TrackerClient:
         args: dict = json.loads(message)[0]
         cmd = args.get('cmd')
 
+        DebugMode = os.getenv('DebugMode')
+        if(DebugMode == "true"):
+            print("=====")
+            print(message)
+            print(args)
+            print("=====")
+
         if cmd == self.MessageCommand.ROOM_INFO.value:
             self.send_connect()
             self.get_datapackage()
@@ -215,6 +224,18 @@ class TrackerClient:
             if self.on_item_send:
                 self.on_item_send(args)
         elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Chat':
+            if self.on_chat_send:
+                self.on_chat_send(args)
+        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'ServerChat':
+            if self.on_chat_send:
+                self.on_chat_send(args)
+        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Goal':
+            if self.on_chat_send:
+                self.on_chat_send(args)
+        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Release':
+            if self.on_chat_send:
+                self.on_chat_send(args)
+        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Collect':
             if self.on_chat_send:
                 self.on_chat_send(args)
         elif cmd == self.MessageCommand.BOUNCED.value and 'DeathLink' in args.get('tags', []):
@@ -259,7 +280,9 @@ async def on_ready():
     global DebugChannel
     DebugChannel = DiscordClient.get_channel(DiscordDebugChannel)
     await DebugChannel.send('Bot connected. Debug control - Online.')
-    await tree.sync(guild=discord.Object(id=DiscordGuildID))
+
+    # We wont sync the command tree for now, need to roll out central control first.
+    #await tree.sync(guild=discord.Object(id=DiscordGuildID))
 
     #Start background tasks
     CheckArchHost.start()
@@ -738,6 +761,11 @@ async def Command_DeathCount():
         DeathLines = d.readlines()
         d.close()
         deathdict = {}
+
+        if len(DeathLines) == 0:
+            await MainChannel.send("No deaths to report.")
+            return
+        
         for deathline in DeathLines:
             DeathUser = deathline.split("||")[6]
             DeathUser = DeathUser.split("\n")[0]
@@ -761,6 +789,7 @@ async def Command_DeathCount():
 
         ### PLOTTING CODE ###
         with plt.xkcd():
+            plt.logging.getLogger('matplotlib.font_manager').disabled = True
 
             # Change length of plot long axis based on player count
             if len(deathnames) >= 20:
@@ -867,7 +896,6 @@ async def Command_CheckCount():
 
         #Finishes the check message
         checkmessage = checkmessage + "```"
-        print(checkmessage)
         await MainChannel.send(checkmessage)
     except Exception as e:
         print(e)
@@ -903,6 +931,7 @@ async def Command_CheckGraph():
 
         ### PLOTTING CODE ###
         with plt.xkcd():
+            plt.logging.getLogger('matplotlib.font_manager').disabled = True
 
             # Change length of plot long axis based on player count
             if len(GameNames) >= 20:
