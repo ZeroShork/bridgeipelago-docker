@@ -98,7 +98,7 @@ DiscordClient = discord.Client(intents=intents)
 tree = app_commands.CommandTree(DiscordClient)
 
 #TO DO - Central Control for bot I'll just leave this in for now.
-#DiscordGuildID = 1171964435741544498
+DiscordGuildID = 1171964435741544498
 
 # Make sure all of the directories exist before we start creating files
 if not os.path.exists(ArchDataDirectory):
