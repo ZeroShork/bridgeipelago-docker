@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v1.1
+#                         |___/          |_|                     |___/  v1.2
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -54,6 +54,13 @@ ArchTrackerURL = os.getenv('ArchipelagoTrackerURL')
 ArchServerURL = os.getenv('ArchipelagoServerURL')
 SpoilTraps = os.getenv('BotItemSpoilTraps')
 ItemFilterLevel = int(os.getenv('BotItemFilterLevel'))
+EnableChatMessages = os.getenv('ChatMessages')
+EnableServerChatMessages = os.getenv('ServerChatMessages')
+EnableGoalMessages = os.getenv('GoalMessages')
+EnableReleaseMessages = os.getenv('ReleaseMessages')
+EnableCollectMessages = os.getenv('CollectMessages')
+EnableCountdownMessages = os.getenv('CountdownMessages')
+EnableDeathlinkMessages = os.getenv('DeathlinkMessages')
 LoggingDirectory = os.getcwd() + os.getenv('LoggingDirectory')
 RegistrationDirectory = os.getcwd() + os.getenv('PlayerRegistrationDirectory')
 ItemQueueDirectory = os.getcwd() + os.getenv('PlayerItemQueueDirectory')
@@ -62,7 +69,6 @@ JoinMessage = os.getenv('JoinMessage')
 DebugMode = os.getenv('DebugMode')
 DiscordJoinOnly = os.getenv('DiscordJoinOnly')
 DiscordDebugChannel = int(os.getenv('DiscordDebugChannel'))
-AutomaticSetup = os.getenv('AutomaticSetup')
 
 # Metadata
 ArchInfo = ArchHost + ':' + ArchPort
@@ -224,23 +230,33 @@ class TrackerClient:
             if self.on_item_send:
                 self.on_item_send(args)
         elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Chat':
-            if self.on_chat_send:
-                self.on_chat_send(args)
+            if EnableChatMessages == "true":
+                if self.on_chat_send:
+                    self.on_chat_send(args)
         elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'ServerChat':
-            if self.on_chat_send:
-                self.on_chat_send(args)
+            if EnableServerChatMessages == "true":
+                if self.on_chat_send:
+                    self.on_chat_send(args)
         elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Goal':
-            if self.on_chat_send:
-                self.on_chat_send(args)
+            if EnableGoalMessages == "true":
+                if self.on_chat_send:
+                    self.on_chat_send(args)
         elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Release':
-            if self.on_chat_send:
-                self.on_chat_send(args)
+            if EnableReleaseMessages == "true":
+                if self.on_chat_send:
+                    self.on_chat_send(args)
         elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Collect':
-            if self.on_chat_send:
-                self.on_chat_send(args)
+            if EnableCollectMessages == "true":
+                if self.on_chat_send:
+                    self.on_chat_send(args)
+        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Countdown':
+            if EnableCountdownMessages == "true":
+                if self.on_chat_send:
+                    self.on_chat_send(args)
         elif cmd == self.MessageCommand.BOUNCED.value and 'DeathLink' in args.get('tags', []):
-            if self.on_death_link:
-                self.on_death_link(args)
+            if EnableDeathlinkMessages == "true":
+                if self.on_death_link:
+                    self.on_death_link(args)
 
     def send_connect(self) -> None:
         print("Sending `Connect` packet to log in to server.")
@@ -984,22 +1000,45 @@ async def Command_Hello(message):
 async def Command_ArchInfo(message):
     DebugMode = os.getenv('DebugMode')
     if(DebugMode == "true"):
+        print("===ENV_VARIABLES===")
         print(DiscordBroadcastChannel)
         print(DiscordAlertUserID)
-        print(ArchInfo)
+        print(DiscordAlertUserID)
+        print(ArchHost)
+        print(ArchPort)
+        print(ArchipelagoBotSlot)
         print(ArchTrackerURL)
         print(ArchServerURL)
+        print(SpoilTraps)
+        print(ItemFilterLevel)
+        print(EnableChatMessages)
+        print(EnableServerChatMessages)
+        print(EnableGoalMessages)
+        print(EnableReleaseMessages)
+        print(EnableCollectMessages)
+        print(EnableCountdownMessages )
+        print(EnableDeathlinkMessages )
+        print(LoggingDirectory)
+        print(RegistrationDirectory)
+        print(ItemQueueDirectory)
+        print(ArchDataDirectory)
+        print(JoinMessage)
+        print(DebugMode)
+        print(DiscordJoinOnly)
+        print(DiscordDebugChannel)
+        print("")
+        print("===GLOBAL_VARIABLES===")
+        print(ArchInfo)
         print(OutputFileLocation)
         print(DeathFileLocation)
         print(DeathTimecodeLocation)
-        print(RegistrationDirectory)
-        print(ItemQueueDirectory)
-        print(JoinMessage)
-        print(DiscordDebugChannel)
-        print(AutomaticSetup)
-        print(DebugMode)
-        print(MainChannel)
-        print(DebugChannel)
+        print(DeathPlotLocation)
+        print(CheckPlotLocation)
+        print(ArchDataDump)
+        print(ArchGameDump)
+        print(ArchConnectionDump)
+        print(ArchRawData)
+        print("")
     else:
         await message.channel.send("Debug Mode is disabled.")
 
