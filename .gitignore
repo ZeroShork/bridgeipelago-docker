@@ -5,6 +5,7 @@ logs/
 *.png
 ArchData/
 bot.py
+bridgeipelago
 
 
 # Byte-compiled / optimized / DLL files
