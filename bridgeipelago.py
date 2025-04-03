@@ -1153,21 +1153,25 @@ if(DiscordJoinOnly == "false"):
     time.sleep(3)
 
 # The run method is blocking, so it will keep the program running
-DiscordThread = Process(target=Discord)
-DiscordThread.start()
+def main():
+    DiscordThread = Process(target=Discord)
+    DiscordThread.start()
 
-## Gotta keep the bot running!
-while True:
-    if not websocket_queue.empty():
-        while not websocket_queue.empty():
-            SQMessage = websocket_queue.get()
-            print(SQMessage)
-        print("Restarting tracker client...")
-        tracker_client.start()
-        time.sleep(10)
+    ## Gotta keep the bot running!
+    while True:
+        if not websocket_queue.empty():
+            while not websocket_queue.empty():
+                SQMessage = websocket_queue.get()
+                print(SQMessage)
+            print("Restarting tracker client...")
+            tracker_client.start()
+            time.sleep(10)
 
-    try:
-        time.sleep(1)
-    except KeyboardInterrupt:
-        print("   Closing Bot Thread - Have a good day :)")
-        exit(1)
+        try:
+            time.sleep(1)
+        except KeyboardInterrupt:
+            print("   Closing Bot Thread - Have a good day :)")
+            exit(1)
+
+if __name__ == '__main__':
+    main()
