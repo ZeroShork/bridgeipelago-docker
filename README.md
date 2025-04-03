@@ -104,13 +104,20 @@ Hopefully that makes sense.
 ||2 - Only Logical Progression Items|
 ||1 - Logical + Useful items|
 ||0 - Logical + Useful + Normal items|
+|**Relay Config**||
+|ChatMessages|Will relay chat messages (This also includes any ! messages, eg. !hint, !release, !collect)|
+|ServerChatMessages|Will relay server chat messages|
+|GoalMessages|Will relay goal messages|
+|ReleaseMessages|Will relay release messages|
+|CollectMessages|Will relay collect messages|
+|CountdownMessages|Will relay server coutndown messages|
+|DeathlinkMessages|Will relay deathlink messages ('false' will disable deathlink tracking functionality)|
 |**Advanced Config**||
 |LoggingDirectory|Directory of the bot's own logs*|
 |PlayerRegistrationDirectory|Directory of the Player Registration Mappings*|
 |PlayerItemQueueDirectory|Directory that stores player item queues*|
 |ArchipelagoDataDirectory|Directory for the Archipelago data packages*|
 |JoinMessage|A custom join message (console only) for the bot|
-|AutomaticSetup|Automaticly starts background processes when bot is turned on|
 |DebugMode|Enables extra debug chat/bot options^|
 
 **\[%] For group IDs, ensure the '&' character is at the beggining of the ID** 
