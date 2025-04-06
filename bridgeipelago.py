@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v1.2
+#                         |___/          |_|                     |___/  v1.2.1
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -23,6 +23,7 @@ import glob
 import random
 import requests
 from bs4 import BeautifulSoup
+import ast
 
 #Threading Dependencies
 from threading import Thread
@@ -201,62 +202,69 @@ class TrackerClient:
         websocket_queue.put("Tracker Closed...")
         sys.exit()
 
-    def on_message(self, wsapp: WebSocketApp, message: str) -> None:
+    def on_message(self, wsapp: WebSocketApp, RawMessage: str) -> None:
         """Handles incoming messages from the Archipelago MultiServer."""
-        args: dict = json.loads(message)[0]
-        cmd = args.get('cmd')
 
         DebugMode = os.getenv('DebugMode')
         if(DebugMode == "true"):
-            print("=====")
-            print(message)
-            print(args)
+            print("==RawMessage==")
+            print(RawMessage)
             print("=====")
 
-        if cmd == self.MessageCommand.ROOM_INFO.value:
-            self.send_connect()
-            self.get_datapackage()
-        elif cmd == self.MessageCommand.DATA_PACKAGE.value:
-            WriteDataPackage(args)
-        elif cmd == self.MessageCommand.CONNECTED.value:
-            WriteConnectionPackage(args)
-            print("Connected to server.")
-        elif cmd == self.MessageCommand.CONNECTIONREFUSED.value:
-            print("Connection refused by server - check your slot name / port / whatever, and try again.")
-            print(args)
-            seppuku_queue.put(args)
-            exit()
-        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'ItemSend':
-            if self.on_item_send:
-                self.on_item_send(args)
-        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Chat':
-            if EnableChatMessages == "true":
-                if self.on_chat_send:
-                    self.on_chat_send(args)
-        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'ServerChat':
-            if EnableServerChatMessages == "true":
-                if self.on_chat_send:
-                    self.on_chat_send(args)
-        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Goal':
-            if EnableGoalMessages == "true":
-                if self.on_chat_send:
-                    self.on_chat_send(args)
-        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Release':
-            if EnableReleaseMessages == "true":
-                if self.on_chat_send:
-                    self.on_chat_send(args)
-        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Collect':
-            if EnableCollectMessages == "true":
-                if self.on_chat_send:
-                    self.on_chat_send(args)
-        elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Countdown':
-            if EnableCountdownMessages == "true":
-                if self.on_chat_send:
-                    self.on_chat_send(args)
-        elif cmd == self.MessageCommand.BOUNCED.value and 'DeathLink' in args.get('tags', []):
-            if EnableDeathlinkMessages == "true":
-                if self.on_death_link:
-                    self.on_death_link(args)
+        for i in range(len(json.loads(RawMessage))):
+
+            args: dict = json.loads(RawMessage)[i]
+            cmd = args.get('cmd')
+
+            if(DebugMode == "true"):
+                print("==Args==")
+                print(args)
+                print("=====")
+
+            if cmd == self.MessageCommand.ROOM_INFO.value:
+                self.send_connect()
+                self.get_datapackage()
+            elif cmd == self.MessageCommand.DATA_PACKAGE.value:
+                WriteDataPackage(args)
+            elif cmd == self.MessageCommand.CONNECTED.value:
+                WriteConnectionPackage(args)
+                print("Connected to server.")
+            elif cmd == self.MessageCommand.CONNECTIONREFUSED.value:
+                print("Connection refused by server - check your slot name / port / whatever, and try again.")
+                print(args)
+                seppuku_queue.put(args)
+                exit()
+            elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'ItemSend':
+                if self.on_item_send:
+                    self.on_item_send(args)
+            elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Chat':
+                if EnableChatMessages == "true":
+                    if self.on_chat_send:
+                        self.on_chat_send(args)
+            elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'ServerChat':
+                if EnableServerChatMessages == "true":
+                    if self.on_chat_send:
+                        self.on_chat_send(args)
+            elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Goal':
+                if EnableGoalMessages == "true":
+                    if self.on_chat_send:
+                        self.on_chat_send(args)
+            elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Release':
+                if EnableReleaseMessages == "true":
+                    if self.on_chat_send:
+                        self.on_chat_send(args)
+            elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Collect':
+                if EnableCollectMessages == "true":
+                    if self.on_chat_send:
+                        self.on_chat_send(args)
+            elif cmd == self.MessageCommand.PRINT_JSON.value and args.get('type') == 'Countdown':
+                if EnableCountdownMessages == "true":
+                    if self.on_chat_send:
+                        self.on_chat_send(args)
+            elif cmd == self.MessageCommand.BOUNCED.value and 'DeathLink' in args.get('tags', []):
+                if EnableDeathlinkMessages == "true":
+                    if self.on_death_link:
+                        self.on_death_link(args)
 
     def send_connect(self) -> None:
         print("Sending `Connect` packet to log in to server.")
