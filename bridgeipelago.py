@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v1.2.1
+#                         |___/          |_|                     |___/  v1.2.3
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -1092,19 +1092,35 @@ def LookupGame(slot):
     return str("NULL")
 
 def ItemFilter(itmclass):
+    #Item Classes are stored in a bit array
+    #0bCBA Where:
+    #A is if the item is progression / logical
+    #B is if the item is useful
+    #C is if the item is a trap / spoil
+    # (An in-review change is open for the bitflags to be expanded to 5 bits (0bEDCBA) see pull/4610)
+    #
+    # If ItemFilterLevel == 2 (Progression), only items with bit A are shown
+    # If ItemFilterLevel == 1 (Progression + Useful), items with bits A OR B are shown
+    # If ItemFilterLevel == 0 (Progression + Useful + Normal), all items are shown as we don't care about the bits
+    #
+    # (Bits are checked from right to left, so array 0b43210)
+
     if ItemFilterLevel == 2:
-        if itmclass == 1:
+        if(itmclass & ( 1 << 0 )):
             return True
         else:
             return False
     elif ItemFilterLevel == 1:
-        if itmclass == 1 or itmclass == 2:
+        if(itmclass & ( 1 << 0 )):
+            return True
+        elif(itmclass & ( 1 << 1 )):
             return True
         else:
             return False
     elif ItemFilterLevel == 0:
         return True
     else:
+        #If the filter is misconfigured, just send the item. It's the user's fault. :)
         return True
 
 async def CancelProcess():
