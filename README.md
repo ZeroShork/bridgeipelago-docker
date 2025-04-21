@@ -111,7 +111,7 @@ Hopefully that makes sense.
 |ReleaseMessages|Will relay release messages|
 |CollectMessages|Will relay collect messages|
 |CountdownMessages|Will relay server coutndown messages|
-|DeathlinkMessages|Will relay deathlink messages ('false' will disable deathlink tracking functionality)|
+|DeathlinkMessages|Will relay deathlink messages|
 |**Advanced Config**||
 |LoggingDirectory|Directory of the bot's own logs*|
 |PlayerRegistrationDirectory|Directory of the Player Registration Mappings*|

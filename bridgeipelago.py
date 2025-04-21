@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v1.2.3
+#                         |___/          |_|                     |___/  v1.2.4
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -262,9 +262,8 @@ class TrackerClient:
                     if self.on_chat_send:
                         self.on_chat_send(args)
             elif cmd == self.MessageCommand.BOUNCED.value and 'DeathLink' in args.get('tags', []):
-                if EnableDeathlinkMessages == "true":
-                    if self.on_death_link:
-                        self.on_death_link(args)
+                if self.on_death_link:
+                    self.on_death_link(args)
 
     def send_connect(self) -> None:
         print("Sending `Connect` packet to log in to server.")
@@ -474,7 +473,10 @@ async def ProcessDeathQueue():
         o = open(DeathFileLocation, "a")
         o.write(DeathLogMessage)
         o.close()
-        await SendMainChannelMessage(DeathMessage)
+        if EnableDeathlinkMessages == "true":
+            await SendMainChannelMessage(DeathMessage)
+        else:
+            return
 
 @tasks.loop(seconds=1)
 async def ProcessChatQueue():
