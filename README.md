@@ -1,5 +1,6 @@
-
+<p align="center">
 <img src="assets/bridgeipelago_r.png" alt="[bridgeipelago logo]" width="300"/>
+</p>
 
 # bridgeipelago
 
