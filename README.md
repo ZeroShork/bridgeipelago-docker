@@ -1,3 +1,6 @@
+
+<img src="assets/bridgeipelago_r.png" alt="[bridgeipelago logo]" width="300"/>
+
 # bridgeipelago
 
 Discord bridge for Archipelago in python

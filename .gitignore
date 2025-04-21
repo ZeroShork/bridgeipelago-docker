@@ -2,7 +2,6 @@
 ItemQueue/
 RegistrationData/
 logs/
-*.png
 ArchData/
 bot.py
 bridgeipelago
