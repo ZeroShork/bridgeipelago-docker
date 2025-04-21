@@ -69,7 +69,6 @@ Next, right-click your name and "Copy User ID", copy it down.
 1. Set 'BotItemFilterLevel' to the level you'd like (0, 1, 2)
 - Relay Config
 1. Set desired AP to Discord relay options.
-1. **Setting DeathlinkMessages to 'false' will disable all deathlink tracking functionality**
 
 You're free to leave the Advanced Config section as-is unless you know what you're doing.  
 Detailed refrences on the .env can be found on the main [Readme](/README.md)
