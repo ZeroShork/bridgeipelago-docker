@@ -88,6 +88,16 @@ ActivePlayers = []
 DumpJSON = []
 ConnectionPackage = []
 
+# Version Checking against GitHub
+try:
+    BPversion = "live-v1.2.4"
+    GHAPIjson = json.loads(requests.get("https://api.github.com/repos/Quasky/bridgeipelago/releases/latest").content)
+    if(GHAPIjson["tag_name"] != BPversion):
+        print("You are not running the current release of Bridgeipelago.")
+        print("The current version is: " + GHAPIjson["tag_name"] + " -- You are running: " + BPversion)
+except:
+    print("Unable to query GitHub API for Bridgeipelago version!")
+
 ## Active Player Population
 if(DiscordJoinOnly == "false"):
     page = requests.get(ArchTrackerURL)
