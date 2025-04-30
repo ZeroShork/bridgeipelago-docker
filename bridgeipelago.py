@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v1.2.5
+#                         |___/          |_|                     |___/  v1.2.4
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -468,8 +468,8 @@ async def ProcessDeathQueue():
     else:
         chatmessage = death_queue.get()
         timecode = time.strftime("%Y||%m||%d||%H||%M||%S")
-        DeathMessage = "**Deathlink received from: " + str(chatmessage['data']['source']) + "**"
-        DeathLogMessage = timecode + "||" + str(chatmessage['data']['source']) + "\n"
+        DeathMessage = "**Deathlink received from: " + chatmessage['data']['source'] + "**"
+        DeathLogMessage = timecode + "||" + chatmessage['data']['source'] + "\n"
         o = open(DeathFileLocation, "a")
         o.write(DeathLogMessage)
         o.close()
