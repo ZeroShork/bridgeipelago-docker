@@ -4,10 +4,12 @@ Following this guide should get you fairly close to complete.
 If you have any questions, feel free to ask in the [Discord](https://discord.gg/5v9P3qNPXp)
 
 ## Before you continue:
-This bot requires python and pip at a minimum.  
-General knowledge of python is encouraged but not strictly necessary.  
+This bot requires `python` and `pip` at a minimum.  
+General knowledge of python is encouraged but <u>not strictly necessary</u>.  
 I've also written this guide with Linux in mind, but that can be easily accomplished with WSL on windows, or a VM to run the bot.  
-You can figure most errors out by just googling.
+There are is some minor help in Step 5 with running python commands in windows.  
+
+To be honest, You can figure out most errors by just googling.
 
 
 ## Step 1) Preparing the Archipelago game
@@ -74,15 +76,25 @@ You're free to leave the Advanced Config section as-is unless you know what you'
 Detailed refrences on the .env can be found on the main [Readme](/README.md)
 
 ## Step 5) Create Python venv + Dependencies (You only need to do this once)
-Create the venv: `python -m venv bridgeipelago`  
+### Linux / WSL
+1. Create the venv: `python -m venv bridgeipelago`  
+1. Join the venv: `source bridgeipelago/bin/activate`  
+1. While inside the venv, run: `pip install -r requirements.txt`
 
-Join the venv: `source bridgeipelago/bin/activate`  
+### Windows Users (Powershell):
+You may need to run `Set-ExecutionPolicy Bypass` to enable scripts.
+1. Create the venv: `py -m venv bridgeipelago`
+1. Join the venv: `./bridgeipelago/Scripts/Activate.ps1`
+1. While inside the venv, run: `pip install -r requirements.txt`
 
-While inside the venv, run: `pip install -r requirements.txt`
-
+### MacOS
+I genuinely have no idea if this is diffrent on OSX.  
+I don't really want to go out and spend $600 USD on a test system for a hobby project.  
+Let me know I guess lol
 
 ## Step 6) Finally: Running the Bot
-Ensure you've joined the venv and setup the .env file, then run: `python3 bridgeipelago.py`
+Ensure you've joined the venv and setup the .env file, then run: `python3 bridgeipelago.py`  
+> Windows users may need to run `py bridgeipelago.py` depending on how Python set up its aliases.
 
 You'll see the bot connect in your Discord channel and join the Archipelago game.
 
