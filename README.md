@@ -40,7 +40,7 @@ What this bot will NOT do:
  - Find the reason the children of this world have forgotten the meaning of Christmas
 
 
-In v1.2.5 messages will be colorcoded to their usefulness in the archipelago run.  
+In v1.2.5 messages will be colorcoded to their usefulness in the Archipelago run.  
 |Color|Item Type|
 |---|---
 |YELLOW|Progression Item|
