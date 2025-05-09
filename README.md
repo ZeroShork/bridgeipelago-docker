@@ -125,6 +125,9 @@ Hopefully that makes sense.
 |CollectMessages|Will relay collect messages|
 |CountdownMessages|Will relay server coutndown messages|
 |DeathlinkMessages|Will relay deathlink messages|
+|**Meta Config**||
+|FlavorDeathLink|Will change deathlink messages to have a little more personality$|
+|DeathLinkLottery|Unused... for now >:) |
 |**Advanced Config**||
 |LoggingDirectory|Directory of the bot's own logs*|
 |PlayerRegistrationDirectory|Directory of the Player Registration Mappings*|
@@ -132,17 +135,19 @@ Hopefully that makes sense.
 |ArchipelagoDataDirectory|Directory for the Archipelago data packages*|
 |JoinMessage|A custom join message (console only) for the bot|
 |DebugMode|Enables extra debug chat/bot options^|
+|SelfHostNoWeb|Disabled WebHost-specific functionality for self-hosted games with no WebHost module|
 
 **\[%] For group IDs, ensure the '&' character is at the beggining of the ID** 
 
 **\[&] Items will still be logged in the BotLog**
+
+**\[$] Edit /modules/DeathlinkFlavor.py to your heart's content for custom flavor**
 
 **\[*] Ensure directories end in a /**
 
 **\[*] These should be four diffrent directories, all these logs in the same place will break the bot.**
 
 **\[^] DebugMode can expose unintended system information. Use with care.**
-
 
 ---
 ---
