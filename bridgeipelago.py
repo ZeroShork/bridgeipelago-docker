@@ -49,13 +49,16 @@ DiscordToken = os.getenv('DiscordToken')
 DiscordBroadcastChannel = int(os.getenv('DiscordBroadcastChannel'))
 DiscordAlertUserID = os.getenv('DiscordAlertUserID')
 DiscordDebugChannel = int(os.getenv('DiscordDebugChannel'))
+
 ArchHost = os.getenv('ArchipelagoServer')
 ArchPort = os.getenv('ArchipelagoPort')
 ArchipelagoBotSlot = os.getenv('ArchipelagoBotSlot')
 ArchTrackerURL = os.getenv('ArchipelagoTrackerURL')
 ArchServerURL = os.getenv('ArchipelagoServerURL')
+
 SpoilTraps = os.getenv('BotItemSpoilTraps')
 ItemFilterLevel = int(os.getenv('BotItemFilterLevel'))
+
 EnableChatMessages = os.getenv('ChatMessages')
 EnableServerChatMessages = os.getenv('ServerChatMessages')
 EnableGoalMessages = os.getenv('GoalMessages')
@@ -63,6 +66,10 @@ EnableReleaseMessages = os.getenv('ReleaseMessages')
 EnableCollectMessages = os.getenv('CollectMessages')
 EnableCountdownMessages = os.getenv('CountdownMessages')
 EnableDeathlinkMessages = os.getenv('DeathlinkMessages')
+
+EnableFlavorDeathlink = os.getenv('FlavorDeathlink')
+EnableDeathlinkLottery = os.getenv('DeathlinkLottery')
+
 LoggingDirectory = os.getcwd() + os.getenv('LoggingDirectory')
 RegistrationDirectory = os.getcwd() + os.getenv('PlayerRegistrationDirectory')
 ItemQueueDirectory = os.getcwd() + os.getenv('PlayerItemQueueDirectory')
@@ -129,6 +136,10 @@ l.close()
 
 l = open(DeathTimecodeLocation, "a")
 l.close()
+
+# Load Meta Modules if they are enabled in the .env
+if EnableFlavorDeathlink == "true":
+    from modules.DeathlinkFlavor import GetFlavorText
 
 ## ARCHIPELAGO TRACKER CLIENT + CORE FUNCTION
 class TrackerClient:
@@ -291,7 +302,6 @@ class TrackerClient:
 
     def stop(self) -> None:
         self.wsapp.close()
-
 
 
 ## DISCORD EVENT HANDLERS + CORE FUNTION
@@ -485,7 +495,11 @@ async def ProcessDeathQueue():
         o.write(DeathLogMessage)
         o.close()
         if EnableDeathlinkMessages == "true":
-            await SendMainChannelMessage(DeathMessage)
+            if EnableFlavorDeathlink == "true":
+                FlavorMessage = "Deathlink: " + GetFlavorText(str(chatmessage['data']['source']))
+                await SendMainChannelMessage(FlavorMessage)
+            else:
+                await SendMainChannelMessage(DeathMessage)
         else:
             return
 
@@ -1221,6 +1235,7 @@ death_queue = Queue()
 chat_queue = Queue()
 seppuku_queue = Queue()
 websocket_queue = Queue()
+lottery_queue = Queue()
 
 ## Threadded async functions
 if(DiscordJoinOnly == "false"):
