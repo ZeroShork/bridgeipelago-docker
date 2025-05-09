@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v1.2.4
+#                         |___/          |_|                     |___/  v1.2.5
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -97,7 +97,7 @@ ConnectionPackage = []
 
 # Version Checking against GitHub
 try:
-    BPversion = "live-v1.2.4"
+    BPversion = "live-v1.2.5"
     GHAPIjson = json.loads(requests.get("https://api.github.com/repos/Quasky/bridgeipelago/releases/latest").content)
     if(GHAPIjson["tag_name"] != BPversion):
         print("You are not running the current release of Bridgeipelago.")
