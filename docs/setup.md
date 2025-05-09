@@ -71,9 +71,16 @@ Next, right-click your name and "Copy User ID", copy it down.
 1. Set 'BotItemFilterLevel' to the level you'd like (0, 1, 2)
 - Relay Config
 1. Set desired AP to Discord relay options.
+- Meta Config
+1. Set 'FlavorDeathLink' to 'true' if you'd like custom flavored deathlink messages.
 
 You're free to leave the Advanced Config section as-is unless you know what you're doing.  
 Detailed references on the .env can be found on the main [Readme](/README.md)
+
+### Selfhosted AP Servers with no WebHost
+If you run a selfhosted AP server but elect to not have the webhost module running, the bot will throw a fit unless you disable WebHost-specific functionality.  
+In the Advanced Config section:
+- Set 'SelfHostNoWeb' to 'true'
 
 ## Step 5) Create Python venv + Dependencies (You only need to do this once)
 
