@@ -1329,3 +1329,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# On 7/12/2024 Bridgeipelago crashed the AP servers and caused Berserker to give me a code review:
+# Berserker - One, what I showed, whatever this bridgeipelago is
+# Exempt-Medic - It's some kind of AP Discord Bot
+# Berserker - Well it's clearly programmed like shit
