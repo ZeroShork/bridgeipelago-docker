@@ -356,6 +356,9 @@ async def on_message(message):
         Status = await Command_ClearReg(str(message.author))
         await SendMainChannelMessage(Status)
 
+    if message.content.startswith('$listreg'):
+        await Command_ListRegistrations(message.author)
+
     # Opens a discord DM with the user, and fires off the Katchmeup process
     # When the user asks, catch them up on checks they're registered for
     ## Yoinks their registration file, scans through it, then find the related ItemQueue file to scan through 
@@ -590,30 +593,56 @@ async def SendDMMessage(message,user):
 
 async def Command_Register(Sender:str, ArchSlot:str):
     try:
-        RegistrationFile = RegistrationDirectory + Sender + ".csv"
-        RegistrationContent = ArchSlot + "\n"
-        # Generate the Registration File if it doesn't exist
-        o = open(RegistrationFile, "a")
-        o.close()
-        # Get contents of the registration file and save it to 'line'
-        o = open(RegistrationFile, "r")
-        line = o.read()
-        o.close()
-        # Check the registration file for ArchSlot, if they are not registered; do so. If they already are; tell them.
-        if not ArchSlot in line:
-            o = open(RegistrationFile, "a")
-            o.write(RegistrationContent)
+        #Compile the Registration File's path
+        RegistrationFile = RegistrationDirectory + Sender + ".json"
+
+        # If the file does not exist, we create it to prevent indexing issues
+        if not os.path.exists(RegistrationFile):
+            o = open(RegistrationFile, "w")
+            o.write("[]")
             o.close()
+
+        # Load the registration file
+        RegistrationContents = json.load(open(RegistrationFile, "r"))
+
+        # Check the registration file for ArchSlot, if they are not registered; do so. If they already are; tell them.
+        if not ArchSlot in RegistrationContents:
+
+            RegistrationContents.append(ArchSlot)
+            json.dump(RegistrationContents, open(RegistrationFile, "w"))
             return "You've been registered for " + ArchSlot + "!"
         else:
             return "You're already registered for that slot."
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN REGISTER <@"+DiscordAlertUserID+">")
+        return "Critical error in REGISTER :("
+
+async def Command_ListRegistrations(Sender):
+    try:
+        RegistrationFile = RegistrationDirectory + str(Sender) + ".json"
+
+        # If the file does not exist, we create it to prevent indexing issues
+        if not os.path.exists(RegistrationFile):
+            o = open(RegistrationFile, "w")
+            o.write("[]")
+            o.close()
+
+        RegistrationContents = json.load(open(RegistrationFile, "r"))
+        if len(RegistrationContents) == 0:
+            await Sender.send("You are not registered for any slots :(")
+        else:
+            Message = "**You are registered for:**\n"
+            for slots in RegistrationContents:
+                Message = Message + slots + "\n"
+            await Sender.send(Message)
+    except Exception as e:
+        print(e)
+        await DebugChannel.send("ERROR IN LISTREG <@"+DiscordAlertUserID+">")
 
 async def Command_ClearReg(Sender:str):
     try:
-        RegistrationFile = RegistrationDirectory + Sender + ".csv"
+        RegistrationFile = RegistrationDirectory + Sender + ".json"
         if not os.path.exists(RegistrationFile):
             return "You're not registered for any slots :("
         os.remove(RegistrationFile)
@@ -624,14 +653,12 @@ async def Command_ClearReg(Sender:str):
 
 async def Command_KetchMeUp(User):
     try:
-        RegistrationFile = RegistrationDirectory + str(User) + ".csv"
+        RegistrationFile = RegistrationDirectory + str(User) + ".json"
         if not os.path.isfile(RegistrationFile):
             await User.send("You've not registered for a slot : (")
         else:
-            r = open(RegistrationFile,"r")
-            RegistrationLines = r.readlines()
-            r.close()
-            for reglines in RegistrationLines:
+            RegistrationContents = json.load(open(RegistrationFile, "r"))
+            for reglines in RegistrationContents:
                 ItemQueueFile = ItemQueueDirectory + reglines.strip() + ".csv"
                 if not os.path.isfile(ItemQueueFile):
                     await User.send("There are no items for " + reglines.strip() + " :/")
@@ -679,7 +706,8 @@ async def Command_KetchMeUp(User):
                         await User.send(ketchupmessage)
                         ketchupmessage = "```"
                 ketchupmessage = ketchupmessage + "```"
-                await User.send(ketchupmessage)
+                if not ketchupmessage == "``````":
+                    await User.send(ketchupmessage)
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN KETCHMEUP <@"+DiscordAlertUserID+">")
@@ -702,7 +730,8 @@ async def Command_GroupCheck(DMauthor, game):
                     await DMauthor.send(ketchupmessage)
                     ketchupmessage = "```"
             ketchupmessage = ketchupmessage + "```"
-            await DMauthor.send(ketchupmessage)
+            if not ketchupmessage == "``````":
+                await DMauthor.send(ketchupmessage)
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN GROUPCHECK <@"+DiscordAlertUserID+">")
@@ -724,14 +753,12 @@ async def Command_Hints(player):
             rows = slots.find_all('tr')
 
 
-        RegistrationFile = RegistrationDirectory + player.name + ".csv"
+        RegistrationFile = RegistrationDirectory + player.name + ".json"
         if not os.path.isfile(RegistrationFile):
             await player.dm_channel.send("You've not registered for a slot : (")
         else:
-            r = open(RegistrationFile,"r")
-            RegistrationLines = r.readlines()
-            r.close()
-            for reglines in RegistrationLines:
+            RegistrationContents = json.load(open(RegistrationFile, "r"))
+            for reglines in RegistrationContents:
 
                 message = "**Here are all of the hints assigned to "+ reglines.strip() +":**"
                 await player.dm_channel.send(message)
@@ -815,7 +842,8 @@ async def Command_Hints(player):
 
                 # Caps off the message
                 checkmessage = checkmessage + "```"
-                await player.dm_channel.send(checkmessage)
+                if not checkmessage == "``````":
+                    await player.send(checkmessage)
     except Exception as e:
         print(e)
         await DebugChannel.send("ERROR IN HINTLIST <@"+DiscordAlertUserID+">")
