@@ -409,7 +409,6 @@ async def CheckArchHost():
 
 @tasks.loop(seconds=QueueOverclock)
 async def ProcessItemQueue():
-    print("Processing Item Queue")
     try:
         if item_queue.empty():
             return
