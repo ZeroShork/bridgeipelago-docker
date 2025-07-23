@@ -163,6 +163,8 @@ Thank you to the people who encourged me to pour my time into this bot. Specific
 
 Thank you to Rainwave Discord community to help with a private beta and bugfixing.
 
+Thank you to @endrawr and @ZeroShork for getting the basics of the docker implimentation set up and allowing me to use their work.
+
 Thank you to the Archipelago Community for making an amazing platform for the world to use.
 
 

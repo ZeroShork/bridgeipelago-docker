@@ -1,0 +1,47 @@
+services:
+  bridgeipelago:
+    command: python bridgeipelago.py
+    environment:
+      #---[Discord Config]---
+      DiscordToken: <your_discord_token>
+      DiscordBroadcastChannel: <your_discord_broadcast_channel>
+      DiscordAlertUserID: <your_discord_alert_user_id>
+      DiscordDebugChannel: <your_discord_debug_channel>
+      #---[Archipelago Config]---
+      ArchipelagoServer: wss://archipelago.gg
+      ArchipelagoPort: 12345
+      ArchipelagoBotSlot: Bridgeipelago
+      ArchipelagoTrackerURL: https://Archipelago.gg/tracker/<customURLhere>
+      ArchipelagoServerURL: https://archipelago.gg/room/<customURLhere>
+      #---[Item Filter Config]---
+      BotItemSpoilTraps: 'true'
+      BotItemFilterLevel: 0
+      #---[Relay Config]---
+      ChatMessages: 'true'
+      ServerChatMessages: 'true'
+      GoalMessages: 'true'
+      ReleaseMessages: 'true'
+      CollectMessages: 'true'
+      CountdownMessages: 'true'
+      DeathlinkMessages: 'true'
+      #---[Meta Config]---
+      FlavorDeathlink: 'false'
+      DeathlinkLottery: 'false'
+      #---[Advanced Config]---
+      LoggingDirectory: /logs/
+      PlayerRegistrationDirectory: /RegistrationData/
+      PlayerItemQueueDirectory: /ItemQueue/
+      ArchipelagoDataDirectory: /ArchData/
+      QueueOverclock: 1
+      JoinMessage: '<custom join message here>'
+      DebugMode: 'false'
+      DiscordJoinOnly: 'false'
+      SelfHostNoWeb: 'false'
+    image: bridgeipelago:latest
+    volumes:
+      - ./bridgeipelago/logs:/bridgeipelago/logs
+      - ./bridgeipelago/RegistrationData:/bridgeipelago/RegistrationData
+      - ./bridgeipelago/ItemQueue:/bridgeipelago/ItemQueue
+      - ./bridgeipelago/ArchData:/bridgeipelago/ArchData
+    working_dir: /bridgeipelago
+version: '3.8'
