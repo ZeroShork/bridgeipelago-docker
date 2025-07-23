@@ -1149,15 +1149,19 @@ def WriteRoomInfo(data):
 
 def CheckDatapackage():
     if os.path.exists(ArchGameDump):
-        room_data = json.load(open(ArchRoomData, 'r'))
-        datapackage_data = json.load(open(ArchGameDump, 'r'))
+        try:
+            room_data = json.load(open(ArchRoomData, 'r'))
+            datapackage_data = json.load(open(ArchGameDump, 'r'))
 
-        for key in room_data["datapackage_checksums"]:
-            room_game_checksum = room_data["datapackage_checksums"][key]
-            datapackage_game_checksum = datapackage_data[key]["checksum"]
-            if not room_game_checksum == datapackage_game_checksum:
-                return False
-        return True
+            for key in room_data["datapackage_checksums"]:
+                room_game_checksum = room_data["datapackage_checksums"][key]
+                datapackage_game_checksum = datapackage_data[key]["checksum"]
+                if not room_game_checksum == datapackage_game_checksum:
+                    return False
+            return True
+        except:
+            print("Unknown error in CheckDatapackage, returning False")
+            return False
     else:
         return False
     
