@@ -9,7 +9,9 @@ Discord bridge for Archipelago in python
 [Discord Link](https://discord.gg/5v9P3qNPXp)
 
 ## Setup:
-See the [SETUP GUIDE](docs/setup.md)
+See the [SETUP GUIDE](docs/setup.md)  
+
+There is also a [DOCKER](docs/docker.md) setup guide as well (if you're into that kind of thing)
 
 ## Funtionality:
 
