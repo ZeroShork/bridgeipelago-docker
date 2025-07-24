@@ -37,7 +37,7 @@ services:
       DebugMode: 'false'
       DiscordJoinOnly: 'false'
       SelfHostNoWeb: 'false'
-    image: bridgeipelago:latest
+    image: bridgeipelago-docker:latest
     volumes:
       - ./bridgeipelago/logs:/bridgeipelago/logs
       - ./bridgeipelago/RegistrationData:/bridgeipelago/RegistrationData
