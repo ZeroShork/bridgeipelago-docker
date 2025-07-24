@@ -4,6 +4,7 @@
 
 - Deployed using the `ghcr.io/zeroshork/bridgeipelago-docker` image
 - Installed via TrueNAS SCALE's *Custom App* interface
+- Requires a gchr token created at: 'https://github.com/settings/tokens', then added to your Docker Registry in TrueNAS.
 
 ## Bootloop on Startup
 
