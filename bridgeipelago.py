@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v2.0.0-pr1
+#                         |___/          |_|                     |___/  v2.0.0-pr2
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -90,7 +90,7 @@ CheckPlotLocation = LoggingDirectory + 'CheckPlot.png'
 ArchDataDump = ArchDataDirectory + 'ArchDataDump.json'
 ArchGameDump = ArchDataDirectory + 'ArchGameDump.json'
 ArchConnectionDump = ArchDataDirectory + 'ArchConnectionDump.json'
-ArchRawData = ArchDataDirectory + 'ArchRawData.txt'
+ArchRoomData = ArchDataDirectory + 'ArchRoomData.json'
 
 # Global Variable Declaration
 DumpJSON = []
@@ -211,7 +211,8 @@ class TrackerClient:
 
                 if cmd == self.MessageCommand.ROOM_INFO.value:
                     self.send_connect()
-                    self.get_datapackage()
+                    WriteRoomInfo(args)
+                    self.check_datapackage()
                 elif cmd == self.MessageCommand.DATA_PACKAGE.value:
                     WriteDataPackage(args)
                 elif cmd == self.MessageCommand.CONNECTED.value:
@@ -269,15 +270,19 @@ class TrackerClient:
         }
         self.send_message(payload)
 
-    def get_datapackage(self) -> None:
-        if os.path.exists(ArchGameDump):
-            print("-- DataPackage exists locally. Not requesting data(package) again.")
+    def check_datapackage(self) -> None:
+        if CheckDatapackage():
+            print("-- DataPackage is valid")
         else:
-            print("-- Datapackage does not exist locally. Sending `DataPackage` packet to request data(package).")
-            payload = {
-                'cmd': 'GetDataPackage'
-            }
-            self.send_message(payload)
+            print("-- DataPackage is invalid, requesting new one.")
+            self.get_datapackage()
+
+    def get_datapackage(self) -> None:
+        print("-- Requesting DataPackage from server.")
+        payload = {
+            'cmd': 'GetDataPackage'
+        }
+        self.send_message(payload)
 
     def send_message(self, message: dict) -> None:
         self.ap_connection.send(json.dumps([message]))
@@ -1124,30 +1129,53 @@ async def Command_ArchInfo(message):
         print(ArchDataDump)
         print(ArchGameDump)
         print(ArchConnectionDump)
-        print(ArchRawData)
+        print(ArchRoomData)
         print("")
     else:
         await message.channel.send("Debug Mode is disabled.")
 
 ## HELPER FUNCTIONS
 def WriteDataPackage(data):
-    with open(ArchDataDump, 'w') as f:
-        json.dump(data, f)
-    
-    with open(ArchDataDump, 'r') as f:
-        LoadedJSON = json.load(f)
-
-    Games = LoadedJSON['data']['games']
-
     with open(ArchGameDump, 'w') as f:
-        json.dump(Games, f)
-
-    # After we load the data, we can empty out the Games variable to clear some memory
-    Games = None
+        json.dump(data['data']['games'], f)
 
 def WriteConnectionPackage(data):
     with open(ArchConnectionDump, 'w') as f:
         json.dump(data, f)
+
+def WriteRoomInfo(data):
+    with open(ArchRoomData, 'w') as f:
+        json.dump(data, f)
+
+def CheckDatapackage():
+    if os.path.exists(ArchGameDump):
+        try:
+            room_data = json.load(open(ArchRoomData, 'r'))
+            datapackage_data = json.load(open(ArchGameDump, 'r'))
+
+            for key in room_data["datapackage_checksums"]:
+                room_game_checksum = room_data["datapackage_checksums"][key]
+                datapackage_game_checksum = datapackage_data[key]["checksum"]
+                if not room_game_checksum == datapackage_game_checksum:
+                    return False
+            return True
+        except:
+            print("Unknown error in CheckDatapackage, returning False")
+            return False
+    else:
+        return False
+    
+def CheckGameDump():
+    if os.path.exists(ArchGameDump):
+        return True
+    else:
+        return False
+
+def CheckConnectionDump():
+    if os.path.exists(ArchConnectionDump):
+        return True
+    else:
+        return False
 
 def LookupItem(game,id):
     for key in DumpJSON[game]['item_name_to_id']:
@@ -1314,6 +1342,10 @@ if(DiscordJoinOnly == "false"):
         seppuku_queue.put("Tracker Client can't start! Seppuku initiated.")
     time.sleep(5)
 
+    if not CheckDatapackage():
+        print("!!! Critical Error - Data package is not valid! Restarting the bot normally fixes this issue.")
+        seppuku_queue.put("Data package is not valid!")
+
     # If there is a critical error in the tracker_client, kill the script.
     if not seppuku_queue.empty() or not websocket_queue.empty():
         print("!! Seppuku Initiated - Goodbye Friend")
@@ -1323,20 +1355,22 @@ if(DiscordJoinOnly == "false"):
     print("-- Loading Arch Data...")
 
     # Wait for game dump to be created by tracker client
-    while not os.path.exists(ArchGameDump):
+    while not CheckGameDump():
         print(f"-- waiting for {ArchGameDump} to be created on when data package is received")
         time.sleep(2)
 
     with open(ArchGameDump, 'r') as f:
         DumpJSON = json.load(f)
+    print("-- Arch Game Data Loaded!")
 
     # Wait for connection dump to be created by tracker client
-    while not os.path.exists(ArchConnectionDump):
+    while not CheckConnectionDump():
         print(f"-- waiting for {ArchConnectionDump} to be created on room connection")
         time.sleep(2)
 
     with open(ArchConnectionDump, 'r') as f:
         ConnectionPackage = json.load(f)
+    print("-- Arch Connection Data Loaded!")
 
     print("-- Arch Data Loaded!")
     time.sleep(3)
