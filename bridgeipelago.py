@@ -11,19 +11,15 @@
 #                - By the Zajcats
 
 #Core Dependencies
-import argparse
 import json
 import typing
 import uuid
 import os
-import sys
 from dotenv import load_dotenv, set_key
 from enum import Enum
-import glob
-import random
 import requests
 from bs4 import BeautifulSoup
-import ast
+#from wakepy import keep
 
 #Threading Dependencies
 from threading import Thread
@@ -79,10 +75,12 @@ JoinMessage = os.getenv('JoinMessage')
 DebugMode = os.getenv('DebugMode')
 DiscordJoinOnly = os.getenv('DiscordJoinOnly')
 SelfHostNoWeb = os.getenv('SelfHostNoWeb')
+CycleDiscord = os.getenv('CycleDiscord')
 
 # Metadata
 ArchInfo = ArchHost + ':' + ArchPort
 OutputFileLocation = LoggingDirectory + 'BotLog.txt'
+ErrorFileLocation = LoggingDirectory + 'ErrorLog.txt'
 DeathFileLocation = LoggingDirectory + 'DeathLog.txt'
 DeathTimecodeLocation = LoggingDirectory + 'DeathTimecode.txt'
 DeathPlotLocation = LoggingDirectory + 'DeathPlot.png'
@@ -251,9 +249,11 @@ class TrackerClient:
             print(f"error self: {self}")
             print(f"error string: {string}")
             print(f"error opcode: {opcode}")
+            WriteToErrorLog("Websocket", "Tracker Error: " + str(string) + " | Opcode: " + str(opcode))
         websocket_queue.put("!! Tracker Error...")
 
     def on_close(self) -> None:
+        WriteToErrorLog("Websocket", "Tracker Closed")
         websocket_queue.put("Tracker Closed...")
 
     def send_connect(self) -> None:
@@ -330,6 +330,7 @@ async def on_ready():
     ProcessItemQueue.start()
     ProcessDeathQueue.start()
     ProcessChatQueue.start()
+    CheckCommandQueue.start()
 
     print(JoinMessage)
     print("Async bot started -", DiscordClient.user)
@@ -400,6 +401,20 @@ async def on_message(message):
         ReloadBot()
         await SendMainChannelMessage("Reloading bot... Please wait.")
 
+@tasks.loop(seconds=1)
+async def CheckCommandQueue():
+    if discordseppuku_queue.empty():
+            return
+    else:
+        CheckArchHost.stop()
+        ProcessItemQueue.stop()
+        ProcessDeathQueue.stop()
+        ProcessChatQueue.stop()
+        while not discordseppuku_queue.empty():
+            item = discordseppuku_queue.get()
+
+        await DiscordClient.close()
+
 @tasks.loop(seconds=900)
 async def CheckArchHost():
     if SelfHostNoWeb == "true":
@@ -422,7 +437,8 @@ async def CheckArchHost():
                 message = "Port Check Failed - Restart tracker process <@"+DiscordAlertUserID+">"
                 #await MainChannel.send(message)
                 await DebugChannel.send(message)
-        except:
+        except Exception as e:
+            WriteToErrorLog("CheckArchHost", "Error occurred while checking ArchHost: " + str(e))
             await DebugChannel.send("ERROR IN CHECKARCHHOST <@"+DiscordAlertUserID+">")
 
 @tasks.loop(seconds=QueueOverclock)
@@ -499,6 +515,7 @@ async def ProcessItemQueue():
                 await CancelProcess()
 
     except Exception as e:
+        WriteToErrorLog("ItemQueue", "Error occurred while processing item queue: " + str(e))
         print(e)
         await SendDebugChannelMessage("Error In Item Queue Process")
 
@@ -621,6 +638,7 @@ async def Command_Register(Sender:str, ArchSlot:str):
         else:
             return "You're already registered for that slot."
     except Exception as e:
+        WriteToErrorLog("Command_Register", "Error in register command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN REGISTER <@"+DiscordAlertUserID+">")
         return "Critical error in REGISTER :("
@@ -644,6 +662,7 @@ async def Command_ListRegistrations(Sender):
                 Message = Message + slots + "\n"
             await Sender.send(Message)
     except Exception as e:
+        WriteToErrorLog("Command_ListRegistrations", "Error in list registrations command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN LISTREG <@"+DiscordAlertUserID+">")
 
@@ -655,6 +674,7 @@ async def Command_ClearReg(Sender:str):
         os.remove(RegistrationFile)
         return "Your registration has been cleared."
     except Exception as e:
+        WriteToErrorLog("Command_ClearReg", "Error in clear registration command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN CLEARREG <@"+DiscordAlertUserID+">")
 
@@ -716,6 +736,7 @@ async def Command_KetchMeUp(User):
                 if not ketchupmessage == "``````":
                     await User.send(ketchupmessage)
     except Exception as e:
+        WriteToErrorLog("Command_KetchMeUp", "Error in ketch me up command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN KETCHMEUP <@"+DiscordAlertUserID+">")
 
@@ -740,6 +761,7 @@ async def Command_GroupCheck(DMauthor, game):
             if not ketchupmessage == "``````":
                 await DMauthor.send(ketchupmessage)
     except Exception as e:
+        WriteToErrorLog("Command_GroupCheck", "Error in group check command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN GROUPCHECK <@"+DiscordAlertUserID+">")
 
@@ -852,6 +874,7 @@ async def Command_Hints(player):
                 if not checkmessage == "``````":
                     await player.send(checkmessage)
     except Exception as e:
+        WriteToErrorLog("Command_Hints", "Error in hints command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN HINTLIST <@"+DiscordAlertUserID+">")
 
@@ -929,7 +952,8 @@ async def Command_DeathCount():
         # Save image and send - any existing plot will be overwritten
         plt.savefig(DeathPlotLocation, bbox_inches="tight")
         await MainChannel.send(file=discord.File(DeathPlotLocation))
-    except:
+    except Exception as e:
+        WriteToErrorLog("Command_DeathCount", "Error in death count command: " + str(e))
         await DebugChannel.send("ERROR DEATHCOUNT <@"+DiscordAlertUserID+">")
 
 async def Command_CheckCount():
@@ -1002,6 +1026,7 @@ async def Command_CheckCount():
         checkmessage = checkmessage + "```"
         await MainChannel.send(checkmessage)
     except Exception as e:
+        WriteToErrorLog("Command_CheckCount", "Error in check count command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN CHECKCOUNT <@"+DiscordAlertUserID+">")
 
@@ -1080,6 +1105,7 @@ async def Command_CheckGraph():
         plt.savefig(CheckPlotLocation, bbox_inches="tight")
         await MainChannel.send(file=discord.File(CheckPlotLocation))
     except Exception as e:
+        WriteToErrorLog("Command_CheckGraph", "Error in check graph command: " + str(e))
         print(e)
         await DebugChannel.send("ERROR IN CHECKGRAPH <@"+DiscordAlertUserID+">")
 
@@ -1159,7 +1185,8 @@ def CheckDatapackage():
                 if not room_game_checksum == datapackage_game_checksum:
                     return False
             return True
-        except:
+        except Exception as e:
+            WriteToErrorLog("CheckDatapackage", "Error reading or validating datapackage: " + str(e))
             print("Unknown error in CheckDatapackage, returning False")
             return False
     else:
@@ -1307,6 +1334,12 @@ def SetEnvVariable(key, value):
 def ReloadBot():
     websocket_queue.put("Discord requested the bot to be reloaded!")
 
+def WriteToErrorLog(module,message):
+    with open(ErrorFileLocation, 'a') as f:
+        put = "["+str(time.strftime("%Y-%m-%d-%H-%M-%S"))+"],["+module+"]," + message
+        f.write(put + "\n")
+
+
 async def CancelProcess():
     return 69420
 
@@ -1318,6 +1351,7 @@ item_queue = Queue()
 death_queue = Queue()
 chat_queue = Queue()
 seppuku_queue = Queue()
+discordseppuku_queue = Queue()
 websocket_queue = Queue()
 lottery_queue = Queue()
 port_queue = Queue()
@@ -1338,6 +1372,7 @@ if(DiscordJoinOnly == "false"):
     try:
         tracker_client.start()
     except Exception as e:
+        WriteToErrorLog("TrackerClient", "Error starting tracker client: " + str(e))
         print("!!! Tracker can't start!")
         seppuku_queue.put("Tracker Client can't start! Seppuku initiated.")
     time.sleep(5)
@@ -1379,8 +1414,11 @@ if(DiscordJoinOnly == "false"):
 def main():
     global ReconnectionTimer
     global ArchPort
+    global DiscordClient
     DiscordThread = Process(target=Discord)
     DiscordThread.start()
+
+    DiscordCycleCount = 0
 
     ## Gotta keep the bot running!
     while True:
@@ -1397,6 +1435,7 @@ def main():
             try:
                 tracker_client.stop()
             except Exception as e:
+                WriteToErrorLog("TrackerClient", "Error stopping tracker client: " + str(e))
                 print("!!! Tracker Client can't stop!")
                 print(e)
             print("Restarting tracker client in ", ReconnectionTimer, "seconds...")
@@ -1413,6 +1452,24 @@ def main():
         else:
             ReconnectionTimer = 5
 
+        if not CycleDiscord == 0:
+            DiscordCycleCount = DiscordCycleCount + 1
+            if DiscordCycleCount == CycleDiscord:
+                print("++ Issuing Discord close command")
+                discordseppuku_queue.put("Discord thread is being killed to test if it can be restarted")
+                time.sleep(3)
+
+                print("++ Closing the discord thread")
+                DiscordThread.close()
+
+                print("++ Sleeping for 3 seconds to allow the discord thread to close")
+                time.sleep(3)
+
+                print("++ Starting the discord thread again")
+                DiscordThread = Process(target=Discord)
+                DiscordThread.start()
+                DiscordCycleCount = 0
+
         try:
             time.sleep(1)
         except KeyboardInterrupt:
@@ -1420,6 +1477,13 @@ def main():
             exit(1)
 
 if __name__ == '__main__':
+    #try:
+    #    with keep.running(on_fail="error"):
+    #        main()
+    #except Exception as e:
+    #    WriteToErrorLog("Main", "Unsupported wakepy environment: " + str(e))
+    #    print("Your terminal/os doesn't support wakepy, we'll just run without it!")
+    #    
     main()
 
 # On 7/12/2024 Bridgeipelago crashed the AP servers and caused Berserker to give me a code review:

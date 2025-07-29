@@ -76,7 +76,7 @@ Hopefully that makes sense.
 ---
 
 ## Commands
-
+**All commands are case-sensitive.**
 |Player Commands|Description|
 |---|---|
 |$register \<slot>|Adds the slot provided to the user's registration file
@@ -87,6 +87,9 @@ Hopefully that makes sense.
 |$deathcount|Scans the deathlog and tallies up the current deathcount for each slot|
 |$checkcount|Fetches the current Arch server's progress in simple txt format|
 |$checkgraph|Plots the current Arch progress in a picture|
+|$reloadbot|Forces the tracker client to reload|
+|$setenv \<key> \<value>|Allows you to set .env options via discord|
+||Current keys: ArchipelagoPort|
 
 |Debug Commands|Description|
 |---|---|
@@ -106,12 +109,14 @@ Hopefully that makes sense.
 |DiscordBroadcastChannel|Discord Channel ID for live-check purposes|
 |DiscordAlertUserID|Discord User/Group ID for yelling about issues%|
 |DiscordDebugChannel|Discord channel ID for debug purposes|
+|||
 |**Archipelago Config**||
 |ArchipelagoServer|The URL of the Archipelago server you'd like to connect to|
 |ArchipelagoPort|The port of the Archipelago server you'd like to connect to|
 |ArchipelagoBotSlot|The name of the slot you'd like the bot to use when connecting to archipelago|
 |ArchipelagoTrackerURL|URL of the tracker you'd like to query|
 |ArchipelagoServerURL|URL of the server you'd like to query|
+|||
 |**Item Filter Config**||
 |BotItemSpoilTraps|The Bot will spoil traps by posting them in chat and ketchmeup&|
 |BotItemFilterLevel|Sets the bot filter level 0 - 1 - 2, to exclude items from discord posts&|
@@ -119,6 +124,7 @@ Hopefully that makes sense.
 ||2 - Only Logical Progression Items|
 ||1 - Logical + Useful items|
 ||0 - Logical + Useful + Normal items|
+|||
 |**Relay Config**||
 |ChatMessages|Will relay chat messages (This also includes any ! messages, eg. !hint, !release, !collect)|
 |ServerChatMessages|Will relay server chat messages|
@@ -127,9 +133,11 @@ Hopefully that makes sense.
 |CollectMessages|Will relay collect messages|
 |CountdownMessages|Will relay server coutndown messages|
 |DeathlinkMessages|Will relay deathlink messages|
+|||
 |**Meta Config**||
 |FlavorDeathLink|Will change deathlink messages to have a little more personality$|
 |DeathLinkLottery|Unused... for now >:) |
+|||
 |**Advanced Config**||
 |LoggingDirectory|Directory of the bot's own logs*|
 |PlayerRegistrationDirectory|Directory of the Player Registration Mappings*|
@@ -143,6 +151,7 @@ Hopefully that makes sense.
 |JoinMessage|A custom join message (console only) for the bot|
 |DebugMode|Enables extra debug chat/bot options^|
 |SelfHostNoWeb|Disabled WebHost-specific functionality for self-hosted games with no WebHost module|
+|CycleDiscord|Setting to a value above 0 will restart the discord process every X seconds|
 
 **\[%] For group IDs, ensure the '&' character is at the beggining of the ID** 
 
