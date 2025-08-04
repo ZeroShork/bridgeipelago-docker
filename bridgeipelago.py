@@ -29,6 +29,7 @@ from matplotlib.ticker import MaxNLocator
 import numpy as np
 
 #Websocket Dependencies
+import websockets
 from websockets.sync.client import connect, ClientConnection
 
 #Requests Dependencies
@@ -360,15 +361,6 @@ class TrackerClient:
             print(e)
             websocket_queue.put("!! Tracker start error...")
 
-    def debug_print(self, who: str, what: str) -> None:
-        relayed_message = "(Discord) " + who + " - " + what
-        payload = {
-            'cmd': 'Say',
-            'text': str(relayed_message)}
-        self.ap_connection.send(json.dumps([payload]))
-
-
-
 ## DISCORD EVENT HANDLERS + CORE FUNTION
 @DiscordClient.event
 async def on_ready():
@@ -464,8 +456,6 @@ async def on_message(message):
 
     # Broken code for sending messages to AP from discord. :(  im working on it
     if not message.content.startswith('$'):
-        #tracker_client.debug_print(str(message.author), message.content)
-        #return
         relayed_message = "(Discord) " + str(message.author) + " - " + str(message.content)
         discordbridge_queue.put(relayed_message)
 
