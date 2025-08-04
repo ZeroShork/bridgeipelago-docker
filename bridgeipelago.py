@@ -17,9 +17,7 @@ import uuid
 import os
 from dotenv import load_dotenv, set_key
 from enum import Enum
-import requests
-from bs4 import BeautifulSoup
-#from wakepy import keep
+import logging
 
 #Threading Dependencies
 from threading import Thread
@@ -32,6 +30,10 @@ import numpy as np
 
 #Websocket Dependencies
 from websockets.sync.client import connect, ClientConnection
+
+#Requests Dependencies
+import requests
+from bs4 import BeautifulSoup
 
 #Discord Dependencies
 from discord.ext import tasks
@@ -90,11 +92,35 @@ ArchGameDump = ArchDataDirectory + 'ArchGameDump.json'
 ArchConnectionDump = ArchDataDirectory + 'ArchConnectionDump.json'
 ArchRoomData = ArchDataDirectory + 'ArchRoomData.json'
 
+if DebugMode == "true":
+    logging.basicConfig(
+        filename='bridge.log',
+        format="%(asctime)s %(message)s",
+        level=logging.DEBUG,
+    )
+    logger = logging.getLogger("websockets")
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+
 # Global Variable Declaration
 DumpJSON = []
 ConnectionPackage = []
 ReconnectionTimer = 5
 EnvPath = os.getcwd() + "/.env"
+
+DiscordClient = None
+tracker_client = None
+
+## These are the main queues for processing data from the Archipelago Tracker to the Discord Bot
+item_queue = Queue()
+death_queue = Queue()
+chat_queue = Queue()
+seppuku_queue = Queue()
+discordseppuku_queue = Queue()
+websocket_queue = Queue()
+lottery_queue = Queue()
+port_queue = Queue()
+discordbridge_queue = Queue()
 
 if(DebugMode == "true"):
     WSdbug = True
@@ -188,73 +214,97 @@ class TrackerClient:
         self.socket_thread: Thread = None
 
     def run(self):
-        """Handles incoming messages from the Archipelago MultiServer."""
-        DebugMode = os.getenv('DebugMode')
-        for RawMessage in self.ap_connection:
+        #=== Main Run Loop ===
+        try:
+            """Handles incoming messages from the Archipelago MultiServer."""
+            DebugMode = os.getenv('DebugMode')
 
-            if(DebugMode == "true"):
-                print("==RawMessage==")
-                print(RawMessage)
-                print("=====")
+            while True:
+                #=== Message Loop ===#
+                try:
+                    RawMessage = self.ap_connection.recv(timeout=QueueOverclock)
 
-            for i in range(len(json.loads(RawMessage))):
+                    if(DebugMode == "true"):
+                        print("==RawMessage==")
+                        print(RawMessage)
+                        print("=====")
+                    for i in range(len(json.loads(RawMessage))):
 
-                args: dict = json.loads(RawMessage)[i]
-                cmd = args.get('cmd')
+                        args: dict = json.loads(RawMessage)[i]
+                        cmd = args.get('cmd')
 
-                if(DebugMode == "true"):
-                    print("==Args==")
-                    print(args)
-                    print("=====")
+                        if(DebugMode == "true"):
+                            print("==Args==")
+                            print(args)
+                            print("=====")
 
-                if cmd == self.MessageCommand.ROOM_INFO.value:
-                    self.send_connect()
-                    WriteRoomInfo(args)
-                    self.check_datapackage()
-                elif cmd == self.MessageCommand.DATA_PACKAGE.value:
-                    WriteDataPackage(args)
-                elif cmd == self.MessageCommand.CONNECTED.value:
-                    WriteConnectionPackage(args)
-                    print("Connected to server.")
-                elif cmd == self.MessageCommand.CONNECTIONREFUSED.value:
-                    print("Connection refused by server - check your slot name / port / whatever, and try again.")
-                    print(args)
-                    seppuku_queue.put(args)
-                elif cmd == self.MessageCommand.PRINT_JSON.value:
-                    if args.get('type') == 'ItemSend' and self.on_item_send:
-                        self.on_item_send(args)
-                    elif args.get('type') == 'Chat':
-                        if EnableChatMessages == "true" and self.on_chat_send:
-                            self.on_chat_send(args)
-                    elif args.get('type') == 'ServerChat':
-                        if EnableServerChatMessages == "true" and self.on_chat_send:
-                             self.on_chat_send(args)
-                    elif args.get('type') == 'Goal':
-                        if EnableGoalMessages == "true" and self.on_chat_send:
-                            self.on_chat_send(args)
-                    elif args.get('type') == 'Release':
-                        if EnableReleaseMessages == "true" and self.on_chat_send:
-                            self.on_chat_send(args)
-                    elif args.get('type') == 'Collect':
-                        if EnableCollectMessages == "true" and self.on_chat_send:
-                            self.on_chat_send(args)
-                    elif args.get('type') == 'Countdown':
-                        if EnableCountdownMessages == "true" and self.on_chat_send:
-                            self.on_chat_send(args)
-                elif 'DeathLink' in args.get('tags', []) and self.on_death_link:
-                    self.on_death_link(args)
+                        if cmd == self.MessageCommand.ROOM_INFO.value:
+                            self.send_connect()
+                            WriteRoomInfo(args)
+                            self.check_datapackage()
+                        elif cmd == self.MessageCommand.DATA_PACKAGE.value:
+                            WriteDataPackage(args)
+                        elif cmd == self.MessageCommand.CONNECTED.value:
+                            WriteConnectionPackage(args)
+                            print("-- Tracker connected to server.")
+                        elif cmd == self.MessageCommand.CONNECTIONREFUSED.value:
+                            print("Tracker Connection refused by server - check your slot name / port / whatever, and try again.")
+                            WriteToErrorLog("Websocket", "Tracker Connection refused by server - check your slot name / port / whatever, and try again.")
+                            WriteToErrorLog("Websocket", str(args))
+                            seppuku_queue.put(args)
+                        elif cmd == self.MessageCommand.PRINT_JSON.value:
+                            if args.get('type') == 'ItemSend' and self.on_item_send:
+                                self.on_item_send(args)
+                            elif args.get('type') == 'Chat':
+                                if EnableChatMessages == "true" and self.on_chat_send:
+                                    self.on_chat_send(args)
+                            elif args.get('type') == 'ServerChat':
+                                if EnableServerChatMessages == "true" and self.on_chat_send:
+                                     self.on_chat_send(args)
+                            elif args.get('type') == 'Goal':
+                                if EnableGoalMessages == "true" and self.on_chat_send:
+                                    self.on_chat_send(args)
+                            elif args.get('type') == 'Release':
+                                if EnableReleaseMessages == "true" and self.on_chat_send:
+                                    self.on_chat_send(args)
+                            elif args.get('type') == 'Collect':
+                                if EnableCollectMessages == "true" and self.on_chat_send:
+                                    self.on_chat_send(args)
+                            elif args.get('type') == 'Countdown':
+                                if EnableCountdownMessages == "true" and self.on_chat_send:
+                                    self.on_chat_send(args)
+                        elif 'DeathLink' in args.get('tags', []) and self.on_death_link:
+                            self.on_death_link(args)
+                        else:
+                            WriteToErrorLog("Websocket", "Tracker Unhandled Message: " + str(args))
+                        pass
+                except websockets.exceptions.ConnectionClosedError as e:
+                    WriteToErrorLog("Websocket", "Tracker ConnectionClosedError: " + str(e))
+                    websocket_queue.put("!! Tracker ConnectionClosedError ...")
+                    break
+                except websockets.exceptions.ConnectionClosed as e:
+                    WriteToErrorLog("Websocket", "Tracker ConnectionClosed: " + str(e))
+                    websocket_queue.put("!! Tracker ConnectionClosed ...")
+                    break
+                except TimeoutError as e:
+                    pass
+                except Exception as e:
+                    WriteToErrorLog("Websocket", "Tracker Unspecified Exception: " + str(e))
+                    websocket_queue.put("!! Tracker Unspecified Exception !?!?!?!? ...")
+                    break
+                #=== End Message Loop ===#
 
-    def on_error(self, string, opcode) -> None:
-        if self.verbose_logging:
-            print(f"error self: {self}")
-            print(f"error string: {string}")
-            print(f"error opcode: {opcode}")
-            WriteToErrorLog("Websocket", "Tracker Error: " + str(string) + " | Opcode: " + str(opcode))
-        websocket_queue.put("!! Tracker Error...")
+                if not discordbridge_queue.empty():
+                        received_payload = discordbridge_queue.get()
+                        payload = {
+                            'cmd': 'Say',
+                            'text': str(received_payload)}
+                        self.send_message(payload)
 
-    def on_close(self) -> None:
-        WriteToErrorLog("Websocket", "Tracker Closed")
-        websocket_queue.put("Tracker Closed...")
+        except Exception as e:
+            WriteToErrorLog("Websocket", "Tracker Unhandled exception in Main Run loop: " + str(e))
+            websocket_queue.put("!! Tracker Unhandled exception in Main Run loop ...")
+        #=== End Main Run Loop ===
 
     def send_connect(self) -> None:
         print("-- Sending `Connect` packet to log in to server.")
@@ -291,7 +341,7 @@ class TrackerClient:
         self.ap_connection.close()
 
     def start(self) -> None:
-        print("Attempting to open an Archipelago MultiServer websocket connection in a new thread.")
+        print("-- Attempting to open an Archipelago MultiServer websocket connection in a new thread.")
         if not port_queue.empty():
             while not port_queue.empty():
                 tempport = port_queue.get()
@@ -309,6 +359,13 @@ class TrackerClient:
             print("Error while trying to connect to Archipelago MultiServer:")
             print(e)
             websocket_queue.put("!! Tracker start error...")
+
+    def debug_print(self, who: str, what: str) -> None:
+        relayed_message = "(Discord) " + who + " - " + what
+        payload = {
+            'cmd': 'Say',
+            'text': str(relayed_message)}
+        self.ap_connection.send(json.dumps([payload]))
 
 
 
@@ -332,8 +389,8 @@ async def on_ready():
     ProcessChatQueue.start()
     CheckCommandQueue.start()
 
-    print(JoinMessage)
-    print("Async bot started -", DiscordClient.user)
+    print("++ ",JoinMessage)
+    print("++ Async bot started -", DiscordClient.user)
 
 @DiscordClient.event
 async def on_message(message):
@@ -399,7 +456,18 @@ async def on_message(message):
 
     if message.content.startswith('$reloadbot'):
         ReloadBot()
-        await SendMainChannelMessage("Reloading bot... Please wait.")
+        await SendMainChannelMessage("Reloading tracker... Please wait about 5-10 seconds.")
+    
+    if message.content.startswith('$reloaddiscord'):
+        discordseppuku_queue.put("Reloading Discord bot...")
+        await SendMainChannelMessage("Reloading Discord bot... Please wait.")
+
+    # Broken code for sending messages to AP from discord. :(  im working on it
+    if not message.content.startswith('$'):
+        #tracker_client.debug_print(str(message.author), message.content)
+        #return
+        relayed_message = "(Discord) " + str(message.author) + " - " + str(message.content)
+        discordbridge_queue.put(relayed_message)
 
 @tasks.loop(seconds=1)
 async def CheckCommandQueue():
@@ -1387,27 +1455,27 @@ if(DiscordJoinOnly == "false"):
         exit(1)
 
     # Since there wasn't a critical error, continue as normal :)
-    print("-- Loading Arch Data...")
+    print("== Loading Arch Data...")
 
     # Wait for game dump to be created by tracker client
     while not CheckGameDump():
-        print(f"-- waiting for {ArchGameDump} to be created on when data package is received")
+        print(f"== waiting for {ArchGameDump} to be created on when data package is received")
         time.sleep(2)
 
     with open(ArchGameDump, 'r') as f:
         DumpJSON = json.load(f)
-    print("-- Arch Game Data Loaded!")
+    print("== Arch Game Data Loaded!")
 
     # Wait for connection dump to be created by tracker client
     while not CheckConnectionDump():
-        print(f"-- waiting for {ArchConnectionDump} to be created on room connection")
+        print(f"== waiting for {ArchConnectionDump} to be created on room connection")
         time.sleep(2)
 
     with open(ArchConnectionDump, 'r') as f:
         ConnectionPackage = json.load(f)
-    print("-- Arch Connection Data Loaded!")
+    print("== Arch Connection Data Loaded!")
 
-    print("-- Arch Data Loaded!")
+    print("== Arch Data Loaded!")
     time.sleep(3)
 
 # The run method is blocking, so it will keep the program running
@@ -1415,6 +1483,7 @@ def main():
     global ReconnectionTimer
     global ArchPort
     global DiscordClient
+    global tracker_client
     DiscordThread = Process(target=Discord)
     DiscordThread.start()
 
@@ -1431,14 +1500,14 @@ def main():
             while not websocket_queue.empty():
                 SQMessage = websocket_queue.get()
                 print(SQMessage)
-            print("Stopping client...")
+            print("-- Stopping client...")
             try:
                 tracker_client.stop()
             except Exception as e:
                 WriteToErrorLog("TrackerClient", "Error stopping tracker client: " + str(e))
                 print("!!! Tracker Client can't stop!")
                 print(e)
-            print("Restarting tracker client in ", ReconnectionTimer, "seconds...")
+            print("-- Restarting tracker client in ", ReconnectionTimer, "seconds...")
             time.sleep(ReconnectionTimer)
 
             # Reset tracker_client with new environment variables
@@ -1476,14 +1545,7 @@ def main():
             print("   Closing Bot Thread - Have a good day :)")
             exit(1)
 
-if __name__ == '__main__':
-    #try:
-    #    with keep.running(on_fail="error"):
-    #        main()
-    #except Exception as e:
-    #    WriteToErrorLog("Main", "Unsupported wakepy environment: " + str(e))
-    #    print("Your terminal/os doesn't support wakepy, we'll just run without it!")
-    #    
+if __name__ == '__main__': 
     main()
 
 # On 7/12/2024 Bridgeipelago crashed the AP servers and caused Berserker to give me a code review:
