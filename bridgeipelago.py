@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v2.0.0-pr2
+#                         |___/          |_|                     |___/  v2.0.0-pr3
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -459,8 +459,7 @@ async def on_message(message):
         discordseppuku_queue.put("Reloading Discord bot...")
         await SendMainChannelMessage("Reloading Discord bot... Please wait.")
 
-    # Broken code for sending messages to AP from discord. :(  im working on it
-    if not message.content.startswith('$'):
+    if not message.content.startswith('$') and EnableDiscordBridge == "true":
         relayed_message = "(Discord) " + str(message.author) + " - " + str(message.content)
         discordbridge_queue.put(relayed_message)
 
