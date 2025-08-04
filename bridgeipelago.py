@@ -36,6 +36,7 @@ from websockets.sync.client import connect, ClientConnection
 import requests
 from bs4 import BeautifulSoup
 
+
 #Discord Dependencies
 from discord.ext import tasks
 import discord
@@ -65,6 +66,8 @@ EnableReleaseMessages = os.getenv('ReleaseMessages')
 EnableCollectMessages = os.getenv('CollectMessages')
 EnableCountdownMessages = os.getenv('CountdownMessages')
 EnableDeathlinkMessages = os.getenv('DeathlinkMessages')
+
+EnableDiscordBridge = os.getenv('DiscordBridgeEnabled')
 
 EnableFlavorDeathlink = os.getenv('FlavorDeathlink')
 EnableDeathlinkLottery = os.getenv('DeathlinkLottery')
@@ -176,7 +179,7 @@ if EnableFlavorDeathlink == "true":
 
 ## ARCHIPELAGO TRACKER CLIENT + CORE FUNCTION
 class TrackerClient:
-    tags: set[str] = {'Tracker', 'DeathLink'}
+    tags: set[str] = {'TextOnly','Tracker', 'DeathLink'}
     version: dict[str, any] = {"major": 0, "minor": 6, "build": 0, "class": "Version"}
     items_handling: int = 0b000  # This client does not receive any items
 
@@ -361,6 +364,8 @@ class TrackerClient:
             print(e)
             websocket_queue.put("!! Tracker start error...")
 
+
+
 ## DISCORD EVENT HANDLERS + CORE FUNTION
 @DiscordClient.event
 async def on_ready():
@@ -446,7 +451,7 @@ async def on_message(message):
         rtrnmessage = SetEnvVariable(pair[0], pair[1])
         await SendMainChannelMessage(rtrnmessage)
 
-    if message.content.startswith('$reloadbot'):
+    if message.content.startswith('$reloadtracker'):
         ReloadBot()
         await SendMainChannelMessage("Reloading tracker... Please wait about 5-10 seconds.")
     
@@ -464,14 +469,16 @@ async def CheckCommandQueue():
     if discordseppuku_queue.empty():
             return
     else:
+        while not discordseppuku_queue.empty():
+                QueueMessage = discordseppuku_queue.get()
+        print("++ Shutting down Discord tasks")
         CheckArchHost.stop()
         ProcessItemQueue.stop()
         ProcessDeathQueue.stop()
         ProcessChatQueue.stop()
-        while not discordseppuku_queue.empty():
-            item = discordseppuku_queue.get()
-
-        await DiscordClient.close()
+        
+        print("++ Closing Discord Client")
+        exit()
 
 @tasks.loop(seconds=900)
 async def CheckArchHost():
@@ -604,7 +611,8 @@ async def ProcessChatQueue():
         return
     else:
         chatmessage = chat_queue.get()
-        await SendMainChannelMessage(chatmessage['data'][0]['text'])
+        if not (chatmessage['data'][0]['text']).startswith(ArchipelagoBotSlot):
+            await SendMainChannelMessage(chatmessage['data'][0]['text'])
 
 @tree.command(name="register",
     description="Registers you for AP slot",
@@ -1402,17 +1410,8 @@ async def CancelProcess():
     return 69420
 
 def Discord():
+    print("++ Starting Discord Client")
     DiscordClient.run(DiscordToken)
-
-## Three main queues for processing data from the Archipelago Tracker to the bot
-item_queue = Queue()
-death_queue = Queue()
-chat_queue = Queue()
-seppuku_queue = Queue()
-discordseppuku_queue = Queue()
-websocket_queue = Queue()
-lottery_queue = Queue()
-port_queue = Queue()
 
 ## Threadded async functions
 if(DiscordJoinOnly == "false"):
@@ -1528,6 +1527,16 @@ def main():
                 DiscordThread = Process(target=Discord)
                 DiscordThread.start()
                 DiscordCycleCount = 0
+        
+        if not DiscordThread.is_alive():
+            print("++ Discord thread is not running, restarting it")
+            print("++ Closing the discord thread")
+            DiscordThread.close()
+            print("++ Sleeping for 3 seconds to allow the discord thread to close")
+            time.sleep(3)
+            print("++ Starting the discord thread again")
+            DiscordThread = Process(target=Discord)
+            DiscordThread.start()
 
         try:
             time.sleep(1)
