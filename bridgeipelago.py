@@ -20,7 +20,7 @@ from enum import Enum
 import logging
 
 #Threading Dependencies
-from threading import Thread
+from threading import Thread, Event
 from multiprocessing import Queue, Process
 
 #Plotting Dependencies
@@ -55,6 +55,7 @@ ArchPort = os.getenv('ArchipelagoPort')
 ArchipelagoBotSlot = os.getenv('ArchipelagoBotSlot')
 ArchTrackerURL = os.getenv('ArchipelagoTrackerURL')
 ArchServerURL = os.getenv('ArchipelagoServerURL')
+UniqueID = os.getenv('UniqueID')
 
 SpoilTraps = os.getenv('BotItemSpoilTraps')
 ItemFilterLevel = int(os.getenv('BotItemFilterLevel'))
@@ -72,10 +73,10 @@ EnableDiscordBridge = os.getenv('DiscordBridgeEnabled')
 EnableFlavorDeathlink = os.getenv('FlavorDeathlink')
 EnableDeathlinkLottery = os.getenv('DeathlinkLottery')
 
-LoggingDirectory = os.getcwd() + os.getenv('LoggingDirectory')
-RegistrationDirectory = os.getcwd() + os.getenv('PlayerRegistrationDirectory')
-ItemQueueDirectory = os.getcwd() + os.getenv('PlayerItemQueueDirectory')
-ArchDataDirectory = os.getcwd() + os.getenv('ArchipelagoDataDirectory')
+LoggingDirectory = os.getcwd() + os.getenv('LoggingDirectory') + UniqueID + '/'
+RegistrationDirectory = os.getcwd() + os.getenv('PlayerRegistrationDirectory') + UniqueID + '/'
+ItemQueueDirectory = os.getcwd() + os.getenv('PlayerItemQueueDirectory') + UniqueID + '/'
+ArchDataDirectory = os.getcwd() + os.getenv('ArchipelagoDataDirectory') + UniqueID + '/'
 QueueOverclock = float(os.getenv('QueueOverclock'))
 JoinMessage = os.getenv('JoinMessage')
 DebugMode = os.getenv('DebugMode')
@@ -91,7 +92,6 @@ DeathFileLocation = LoggingDirectory + 'DeathLog.txt'
 DeathTimecodeLocation = LoggingDirectory + 'DeathTimecode.txt'
 DeathPlotLocation = LoggingDirectory + 'DeathPlot.png'
 CheckPlotLocation = LoggingDirectory + 'CheckPlot.png'
-ArchDataDump = ArchDataDirectory + 'ArchDataDump.json'
 ArchGameDump = ArchDataDirectory + 'ArchGameDump.json'
 ArchConnectionDump = ArchDataDirectory + 'ArchConnectionDump.json'
 ArchRoomData = ArchDataDirectory + 'ArchRoomData.json'
@@ -107,8 +107,8 @@ if DebugMode == "true":
     logger.addHandler(logging.StreamHandler())
 
 # Global Variable Declaration
-DumpJSON = []
-ConnectionPackage = []
+ArchGameJSON = []
+ArchConnectionJSON = []
 ReconnectionTimer = 5
 EnvPath = os.getcwd() + "/.env"
 
@@ -216,6 +216,7 @@ class TrackerClient:
         self.uuid: int = uuid.getnode()
         self.ap_connection: ClientConnection = None
         self.socket_thread: Thread = None
+        self.is_closed = Event()
 
     def run(self):
         #=== Main Run Loop ===
@@ -223,33 +224,23 @@ class TrackerClient:
             """Handles incoming messages from the Archipelago MultiServer."""
             DebugMode = os.getenv('DebugMode')
 
-            while True:
+            while not self.is_closed.is_set():
                 #=== Message Loop ===#
+
+
                 try:
                     RawMessage = self.ap_connection.recv(timeout=QueueOverclock)
-
-                    if(DebugMode == "true"):
-                        print("==RawMessage==")
-                        print(RawMessage)
-                        print("=====")
                     for i in range(len(json.loads(RawMessage))):
-
                         args: dict = json.loads(RawMessage)[i]
                         cmd = args.get('cmd')
-
-                        if(DebugMode == "true"):
-                            print("==Args==")
-                            print(args)
-                            print("=====")
-
                         if cmd == self.MessageCommand.ROOM_INFO.value:
-                            self.send_connect()
                             WriteRoomInfo(args)
                             self.check_datapackage()
+                            self.send_connect()
                         elif cmd == self.MessageCommand.DATA_PACKAGE.value:
                             WriteDataPackage(args)
                         elif cmd == self.MessageCommand.CONNECTED.value:
-                            WriteConnectionPackage(args)
+                            WriteArchConnectionJSON(args)
                             print("-- Tracker connected to server.")
                         elif cmd == self.MessageCommand.CONNECTIONREFUSED.value:
                             print("Tracker Connection refused by server - check your slot name / port / whatever, and try again.")
@@ -289,6 +280,10 @@ class TrackerClient:
                 except websockets.exceptions.ConnectionClosed as e:
                     WriteToErrorLog("Websocket", "Tracker ConnectionClosed: " + str(e))
                     websocket_queue.put("!! Tracker ConnectionClosed ...")
+                    break
+                except websockets.exceptions.InvalidState as e:
+                    WriteToErrorLog("Websocket", "Tracker InvalidState: " + str(e))
+                    websocket_queue.put("!! Tracker InvalidState ...")
                     break
                 except TimeoutError as e:
                     pass
@@ -342,6 +337,7 @@ class TrackerClient:
         self.ap_connection.send(json.dumps([message]))
 
     def stop(self) -> None:
+        self.is_closed.set()
         self.ap_connection.close()
 
     def start(self) -> None:
@@ -349,13 +345,19 @@ class TrackerClient:
         if not port_queue.empty():
             while not port_queue.empty():
                 tempport = port_queue.get()
+            try:
+                clearqueueuue = self.ap_connection.recv(timeout=0.1)
+            except:
+                pass
             self.port = tempport
         try:
+            self.is_closed.clear()
             self.ap_connection = connect(
                 f'{self.server_uri}:{self.port}',
                 max_size=None,
                 **self.ap_connection_kwargs
             )
+            self.socket_thread: Thread = None
             self.socket_thread = Thread(target=self.run)
             self.socket_thread.daemon = True
             self.socket_thread.start()
@@ -458,6 +460,10 @@ async def on_message(message):
     if message.content.startswith('$reloaddiscord'):
         discordseppuku_queue.put("Reloading Discord bot...")
         await SendMainChannelMessage("Reloading Discord bot... Please wait.")
+
+    if message.content.startswith('$reloaddata'):
+        ReloadJSONPackages()
+        await SendMainChannelMessage("Reloading datavars... Please wait 2-3 seconds.")
 
     if not message.content.startswith('$') and EnableDiscordBridge == "true":
         relayed_message = "(Discord) " + str(message.author) + " - " + str(message.content)
@@ -1217,7 +1223,6 @@ async def Command_ArchInfo(message):
         print(DeathTimecodeLocation)
         print(DeathPlotLocation)
         print(CheckPlotLocation)
-        print(ArchDataDump)
         print(ArchGameDump)
         print(ArchConnectionDump)
         print(ArchRoomData)
@@ -1230,7 +1235,7 @@ def WriteDataPackage(data):
     with open(ArchGameDump, 'w') as f:
         json.dump(data['data']['games'], f)
 
-def WriteConnectionPackage(data):
+def WriteArchConnectionJSON(data):
     with open(ArchConnectionDump, 'w') as f:
         json.dump(data, f)
 
@@ -1270,27 +1275,27 @@ def CheckConnectionDump():
         return False
 
 def LookupItem(game,id):
-    for key in DumpJSON[game]['item_name_to_id']:
-        if str(DumpJSON[game]['item_name_to_id'][key]) == str(id):
+    for key in ArchGameJSON[game]['item_name_to_id']:
+        if str(ArchGameJSON[game]['item_name_to_id'][key]) == str(id):
             return str(key)
     return str("NULL")
     
 def LookupLocation(game,id):
-    for key in DumpJSON[game]['location_name_to_id']:
-        if str(DumpJSON[game]['location_name_to_id'][key]) == str(id):
+    for key in ArchGameJSON[game]['location_name_to_id']:
+        if str(ArchGameJSON[game]['location_name_to_id'][key]) == str(id):
             return str(key)
     return str("NULL")
 
 def LookupSlot(slot):
-    for key in ConnectionPackage['slot_info']:
+    for key in ArchConnectionJSON['slot_info']:
         if key == slot:
-            return str(ConnectionPackage['slot_info'][key]['name'])
+            return str(ArchConnectionJSON['slot_info'][key]['name'])
     return str("NULL")
 
 def LookupGame(slot):
-    for key in ConnectionPackage['slot_info']:
+    for key in ArchConnectionJSON['slot_info']:
         if key == slot:
-            return str(ConnectionPackage['slot_info'][key]['game'])
+            return str(ArchConnectionJSON['slot_info'][key]['game'])
     return str("NULL")
 
 def ItemFilter(itmclass):
@@ -1386,14 +1391,26 @@ def SpecialFormat(text,color,format):
     return itext
 
 def SetEnvVariable(key, value):
-    if key not in ["ArchipelagoPort"]:
-        return "Invalid key. Only 'ArchipelagoPort' can be set."
+    if key not in ["ArchipelagoPort","ArchipelagoTrackerURL","ArchipelagoServerURL","UniqueID"]:
+        return "Invalid key. Only 'ArchipelagoPort', 'ArchipelagoTrackerURL', 'ArchipelagoServerURL', and 'UniqueID' can be set."
     else:
         if key == "ArchipelagoPort":
             global ArchPort
             ArchPort = value
             port_queue.put(value)
+        elif key == "ArchipelagoTrackerURL":
+            global ArchTrackerURL
+            ArchTrackerURL = value
+        elif key == "ArchipelagoServerURL":
+            global ArchServerURL
+            ArchServerURL = value
+        elif key == "UniqueID":
+            global UniqueID
+            UniqueID = value
         set_key(dotenv_path=EnvPath, key_to_set=key, value_to_set=value)
+
+        #We'll reconfirm and reload the data locations since we can change values. It's no harm to reapply them all for the heck of it.
+        ConfirmDataLocations()
         return "Key '" + key + "' set to '" + value + "'!"
 
 def ReloadBot():
@@ -1403,6 +1420,70 @@ def WriteToErrorLog(module,message):
     with open(ErrorFileLocation, 'a') as f:
         put = "["+str(time.strftime("%Y-%m-%d-%H-%M-%S"))+"],["+module+"]," + message
         f.write(put + "\n")
+
+def ConfirmDataLocations():
+    global LoggingDirectory
+    global RegistrationDirectory
+    global ItemQueueDirectory
+    global ArchDataDirectory
+    global ArchInfo
+    global OutputFileLocation
+    global ErrorFileLocation 
+    global DeathFileLocation 
+    global DeathTimecodeLocation
+    global DeathPlotLocation
+    global CheckPlotLocation
+    global ArchGameDump
+    global ArchConnectionDump
+    global ArchRoomData
+    LoggingDirectory = os.getcwd() + os.getenv('LoggingDirectory') + UniqueID + '/'
+    RegistrationDirectory = os.getcwd() + os.getenv('PlayerRegistrationDirectory') + UniqueID + '/'
+    ItemQueueDirectory = os.getcwd() + os.getenv('PlayerItemQueueDirectory') + UniqueID + '/'
+    ArchDataDirectory = os.getcwd() + os.getenv('ArchipelagoDataDirectory') + UniqueID + '/'
+
+    # Metadata
+    ArchInfo = ArchHost + ':' + ArchPort
+    OutputFileLocation = LoggingDirectory + 'BotLog.txt'
+    ErrorFileLocation = LoggingDirectory + 'ErrorLog.txt'
+    DeathFileLocation = LoggingDirectory + 'DeathLog.txt'
+    DeathTimecodeLocation = LoggingDirectory + 'DeathTimecode.txt'
+    DeathPlotLocation = LoggingDirectory + 'DeathPlot.png'
+    CheckPlotLocation = LoggingDirectory + 'CheckPlot.png'
+    ArchGameDump = ArchDataDirectory + 'ArchGameDump.json'
+    ArchConnectionDump = ArchDataDirectory + 'ArchConnectionDump.json'
+    ArchRoomData = ArchDataDirectory + 'ArchRoomData.json'
+
+    #We'll confirm the files/directories exist fo we can write to them. 
+    if not os.path.exists(ArchDataDirectory):
+        os.makedirs(ArchDataDirectory)
+
+    if not os.path.exists(LoggingDirectory):
+        os.makedirs(LoggingDirectory)
+
+    if not os.path.exists(RegistrationDirectory):
+        os.makedirs(RegistrationDirectory)
+
+    if not os.path.exists(ItemQueueDirectory):
+        os.makedirs(ItemQueueDirectory)
+
+    l = open(DeathFileLocation, "a")
+    l.close()
+
+    l = open(OutputFileLocation, "a")
+    l.close()
+
+    l = open(DeathTimecodeLocation, "a")
+    l.close()
+
+def ReloadJSONPackages():
+    global ArchGameJSON
+    global ArchConnectionJSON
+
+    with open(ArchGameDump, 'r') as f:
+        ArchGameJSON = json.load(f)
+
+    with open(ArchConnectionDump, 'r') as f:
+        ArchConnectionJSON = json.load(f)
 
 
 async def CancelProcess():
@@ -1451,7 +1532,7 @@ if(DiscordJoinOnly == "false"):
         time.sleep(2)
 
     with open(ArchGameDump, 'r') as f:
-        DumpJSON = json.load(f)
+        ArchGameJSON = json.load(f)
     print("== Arch Game Data Loaded!")
 
     # Wait for connection dump to be created by tracker client
@@ -1460,7 +1541,7 @@ if(DiscordJoinOnly == "false"):
         time.sleep(2)
 
     with open(ArchConnectionDump, 'r') as f:
-        ConnectionPackage = json.load(f)
+        ArchConnectionJSON = json.load(f)
     print("== Arch Connection Data Loaded!")
 
     print("== Arch Data Loaded!")
@@ -1484,30 +1565,56 @@ def main():
             print("Seppuku Initiated - Goodbye Friend")
             exit(1)
 
-        if not websocket_queue.empty():
+        if not tracker_client.socket_thread.is_alive() or not websocket_queue.empty():
             while not websocket_queue.empty():
                 SQMessage = websocket_queue.get()
-                print(SQMessage)
-            print("-- Stopping client...")
-            try:
-                tracker_client.stop()
-            except Exception as e:
-                WriteToErrorLog("TrackerClient", "Error stopping tracker client: " + str(e))
-                print("!!! Tracker Client can't stop!")
-                print(e)
-            print("-- Restarting tracker client in ", ReconnectionTimer, "seconds...")
-            time.sleep(ReconnectionTimer)
-
-            # Reset tracker_client with new environment variables
+                print("!! clearing queue -- ", SQMessage)
+            print("-- Tracker thread is not running, restarting it")
+            print("-- Stopping Tracker...")
+            tracker_client.stop()
+            print("-- sleeping for 5 seconds to allow the tracker to close")
+            time.sleep(5)
+            print("-- Restarting tracker client...")
             tracker_client.start()
 
-            if ReconnectionTimer < 120:
-                ReconnectionTimer = ReconnectionTimer + 5
-            else:
-                print("-- Reconnection Timer is too high, capping to 120 seconds.")
-                ReconnectionTimer = 120
-        else:
-            ReconnectionTimer = 5
+
+
+        #if not websocket_queue.empty():
+        #    while not websocket_queue.empty():
+        #        SQMessage = websocket_queue.get()
+        #        print("!! clearing queue -- ", SQMessage)
+        #    print("-- Stopping client...")
+        #    try:
+        #        tracker_client.stop()
+        #    except Exception as e:
+        #        WriteToErrorLog("TrackerClient", "Error stopping tracker client: " + str(e))
+        #        print("!!! Tracker Client can't stop!")
+        #        print(e)
+        #    print("-- Restarting tracker client in ", ReconnectionTimer, "seconds...")
+        #    time.sleep(ReconnectionTimer)
+#
+#
+#
+        #    # Reset tracker_client with new environment variables
+        #    tracker_client = None
+        #    tracker_client = TrackerClient(
+        #        server_uri=ArchHost,
+        #        port=ArchPort,
+        #        slot_name=ArchipelagoBotSlot,
+        #        verbose_logging=WSdbug,
+        #        on_chat_send=lambda args : chat_queue.put(args),
+        #        on_death_link=lambda args : death_queue.put(args),
+        #        on_item_send=lambda args : item_queue.put(args)
+        #    )
+        #    tracker_client.start()
+#
+        #    if ReconnectionTimer < 120:
+        #        ReconnectionTimer = ReconnectionTimer + 5
+        #    else:
+        #        print("-- Reconnection Timer is too high, capping to 120 seconds.")
+        #        ReconnectionTimer = 120
+        #else:
+        #    ReconnectionTimer = 5
 
         if not CycleDiscord == 0:
             DiscordCycleCount = DiscordCycleCount + 1

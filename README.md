@@ -13,6 +13,8 @@ See the [SETUP GUIDE](docs/setup.md)
 
 There is also a [DOCKER](docs/docker.md) setup guide as well (if you're into that kind of thing)
 
+You can chagne rooms via discord by following the directions in [SWAPPING ROOMS IN DISCORD](docs/setup.md#swapping-rooms-via-discord)
+
 ## Funtionality:
 
 ### Core
@@ -42,7 +44,7 @@ What this bot will NOT do:
  - Find the reason the children of this world have forgotten the meaning of Christmas
 
 
-In v1.2.5 messages will be colorcoded to their usefulness in the Archipelago run.  
+In v1.2.5 and above, messages will be colorcoded to their usefulness in the Archipelago run.  
 |Color|Item Type|
 |---|---
 |YELLOW|Progression Item|
@@ -95,14 +97,13 @@ Hopefully that makes sense.
 |$reloadtracker|Forces the tracker client to reload|
 |$reloaddiscord|Forces the discord bot to reload|
 |$setenv \<key> \<value>|Allows you to set .env options via discord|
-||Current keys: ArchipelagoPort|
+||Current keys: ArchipelagoPort, ArchipelagoTrackerURL, ArchipelagoServerURL, UniqueID|
 |$ArchInfo|\[CONSOLE] General bot details for debugging .env tables^|
 
-**\[^] DebugMode only commands**
-
+**\[^] DebugMode only commands**  
 **\[^] DebugMode can expose unintended system information. Use with care.**
   
-## Configs
+## .env Keys and Descriptions
 |Key|Description|
 |---|---|
 |**Discord Config**||
@@ -117,6 +118,7 @@ Hopefully that makes sense.
 |ArchipelagoBotSlot|The name of the slot you'd like the bot to use when connecting to archipelago|
 |ArchipelagoTrackerURL|URL of the tracker you'd like to query|
 |ArchipelagoServerURL|URL of the server you'd like to query|
+|UniqueID|This UniqueID will sort all the game data into a key'd folder so you can swap between rooms via discord #|
 |||
 |**Item Filter Config**||
 |BotItemSpoilTraps|The Bot will spoil traps by posting them in chat and ketchmeup&|
@@ -135,7 +137,7 @@ Hopefully that makes sense.
 |CountdownMessages|Will relay server coutndown messages|
 |DeathlinkMessages|Will relay deathlink messages|
 |**Drawbridge Config**||
-|DiscordBridgeEnabled|\[Unfinished\]|
+|DiscordBridgeEnabled|Will toggle the ability to send messages to AP from Discord|
 |||
 |**Meta Config**||
 |FlavorDeathLink|Will change deathlink messages to have a little more personality$|
@@ -158,12 +160,13 @@ Hopefully that makes sense.
 
 **\[%] For group IDs, ensure the '&' character is at the beggining of the ID** 
 
+**\[#] Check [UniqueID](docs/setup.md/#UniqueID) in the setup readme on what this value is used for**  
+
 **\[&] Items will still be logged in the BotLog**
 
 **\[$] Edit /modules/DeathlinkFlavor.py to your heart's content for custom flavor**
 
-**\[*] Ensure directories end in a /**
-
+**\[*] Ensure directories end in a /**  
 **\[*] These should be four diffrent directories, all these logs in the same place will break the bot.**
 
 **\[^] DebugMode can expose unintended system information. Use with care.**

@@ -66,11 +66,14 @@ Next, right-click your name and "Copy User ID", copy it down.
 1. Fill out 'ArchipelagoBotSlot' with the slot name of the bot (Not needed if you used the included yaml)
 1. Fill out 'ArchipelagoTrackerURL' with the Tracker room URL
 1. Fill out 'ArchipelagoServerURL' with the room URL
+1. Fill out 'UniqueID' with the RoomID/seed/an arbitrary value (see [UniqueID](#UniqueID) for detailed useage)
 - Item Filter Config
 1. Set 'BotItemSpoilTraps' to 'true' if you'd like to have traps spoiled, or change to 'false' to hide traps
 1. Set 'BotItemFilterLevel' to the level you'd like (0, 1, 2)
 - Relay Config
 1. Set desired AP to Discord relay options.
+- Drawbridge Config
+1. Set 'DiscordBridgeEnabled' to 'true' if you'd like chat from discord bridged to AP.
 - Meta Config
 1. Set 'FlavorDeathLink' to 'true' if you'd like custom flavored deathlink messages.
 
@@ -104,3 +107,44 @@ You'll see the bot connect to your Discord channel and join the Archipelago game
 
 # Issues:
 You can join the discord and post in the [tech-support](https://discord.gg/wpdPprvYgX) channel for assistance on setting up the bot.
+
+-----
+-----
+
+## UniqueID
+This value is used to store the bot's files in key'd directories for use in a run.  
+When changing rooms / AP runs, you'll need to manually purge the data directories and restart Bridgeipelago or run the [Swapping rooms via Discord](#swapping-rooms-via-discord) process via discord.
+
+## Swapping Rooms via Discord
+You have the ability to swap rooms without manually editing the .env of the bot.
+This process will automaticly create new directories, and reload all data needed for running Bridgeipelago.  
+
+It's a fairly painless process, but should be done carefully and in order, as to not break Bridgeipelago into a thousand pieces.
+
+**(Make sure the room is up, and connectable by clients before you $reloadtracker!)**
+
+1. $setenv ArchipelagoPort \<port>  
+  -- Sets the port
+1. $setenv ArchipelagoTrackerURL \<tracker URL>  
+  -- Sets the tracker URL
+1. $setenv ArchipelagoServerURL \<server URL>  
+  -- Sets the ServerURL
+1. $setenv UniqueID \<uniqueID>  
+  -- Sets the new UniqueID
+1. $reloadtracker  
+  -- Tells the tracker to reload to fetch new room data, datapackages, and connection data for the new room
+1. $reloaddata  
+  -- Reloads the room's data into memory
+1. $reloaddiscord  
+  -- Finally, tell discord to reload to make sure it's cleaned out
+
+By setting the values in this order, you can prep the new connection in steps 1-3, create the new directories in step 4, populate new room data with step 5, load the data into memory with step 6, then finally; refresh discord in step 7
+
+If any any time this process breaks or throws an error here are some common troubleshooting tips:
+  - Stopping Bridgeipelago fully and restarting it
+  - Stopping Bridgeipelago, deleting the contents of the data directories, and restarting Bridgeipelago
+  - Nuking everything and restarting 
+  - Praying to the magic smoke god in your comptuer to make it work
+
+If none of this works, poke in the discord for help and someone will get you sorted. :)
+
