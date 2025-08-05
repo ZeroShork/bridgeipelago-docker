@@ -1577,45 +1577,6 @@ def main():
             print("-- Restarting tracker client...")
             tracker_client.start()
 
-
-
-        #if not websocket_queue.empty():
-        #    while not websocket_queue.empty():
-        #        SQMessage = websocket_queue.get()
-        #        print("!! clearing queue -- ", SQMessage)
-        #    print("-- Stopping client...")
-        #    try:
-        #        tracker_client.stop()
-        #    except Exception as e:
-        #        WriteToErrorLog("TrackerClient", "Error stopping tracker client: " + str(e))
-        #        print("!!! Tracker Client can't stop!")
-        #        print(e)
-        #    print("-- Restarting tracker client in ", ReconnectionTimer, "seconds...")
-        #    time.sleep(ReconnectionTimer)
-#
-#
-#
-        #    # Reset tracker_client with new environment variables
-        #    tracker_client = None
-        #    tracker_client = TrackerClient(
-        #        server_uri=ArchHost,
-        #        port=ArchPort,
-        #        slot_name=ArchipelagoBotSlot,
-        #        verbose_logging=WSdbug,
-        #        on_chat_send=lambda args : chat_queue.put(args),
-        #        on_death_link=lambda args : death_queue.put(args),
-        #        on_item_send=lambda args : item_queue.put(args)
-        #    )
-        #    tracker_client.start()
-#
-        #    if ReconnectionTimer < 120:
-        #        ReconnectionTimer = ReconnectionTimer + 5
-        #    else:
-        #        print("-- Reconnection Timer is too high, capping to 120 seconds.")
-        #        ReconnectionTimer = 120
-        #else:
-        #    ReconnectionTimer = 5
-
         if not CycleDiscord == 0:
             DiscordCycleCount = DiscordCycleCount + 1
             if DiscordCycleCount == CycleDiscord:
