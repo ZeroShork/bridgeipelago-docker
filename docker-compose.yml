@@ -1,0 +1,22 @@
+version: "3.8"  # Docker Compose file format version
+
+services:
+  bridgeipelago:
+    build: data/apps/bridgeipelago  # Build the image using the Dockerfile in the current directory
+    container_name: bridgeipelago  # Name the container "bridgeipelago" instead of a random hash
+
+    restart: unless-stopped  # Auto-restart if it crashes or on reboot, but not if manually stopped
+
+    env_file:
+      - .env  # Load environment variables (like Discord token, server URL) from the .env file
+
+    volumes:
+      - bridgeipelago_logs:/app/logs  # Persist logs to a named volume
+      - bridgeipelago_data:/app/archdata  # Persist registration queues and Archipelago dump data
+
+    tty: true  # Keep the container’s terminal open (useful for debugging)
+    stdin_open: true  # Allow interactive input if you attach to the container later
+
+volumes:
+  bridgeipelago_logs:  # Named volume for logs
+  bridgeipelago_data:  # Named volume for player/item/arch data
