@@ -1082,16 +1082,17 @@ async def Command_CheckCount():
         checkmessage = "```" + slot.ljust(SlotWidth) + " || " + game.ljust(GameWidth) + " || " + checks.ljust(ChecksWidth) + " || " + percent +"\n"
 
         for row in rows:
+            if len(checkmessage) > 1500:
+                checkmessage = checkmessage + "```"
+                await MainChannel.send(checkmessage)
+                checkmessage = "```"
             slot = (row.find_all('td')[1].text).strip()
             game = (row.find_all('td')[2].text).strip()
             status = (row.find_all('td')[3].text).strip()
             checks = (row.find_all('td')[4].text).strip()
             percent = (row.find_all('td')[5].text).strip()
             checkmessage = checkmessage + slot.ljust(SlotWidth) + " || " + game.ljust(GameWidth) + " || " + checks.ljust(ChecksWidth) + " || " + percent + "\n"
-            if len(checkmessage) > 1900:
-                checkmessage = checkmessage + "```"
-                await MainChannel.send(checkmessage)
-                checkmessage = "```"
+
 
         #Finishes the check message
         checkmessage = checkmessage + "```"
