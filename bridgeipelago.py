@@ -5,7 +5,7 @@
 # | |_/ /| |   | || (_| || (_| ||  __/| || |_) ||  __/| || (_| || (_| || (_) |
 # \____/ |_|   |_| \__,_| \__, | \___||_|| .__/  \___||_| \__,_| \__, | \___/ 
 #                          __/ |         | |                      __/ |       
-#                         |___/          |_|                     |___/  v2.0.0-pr3
+#                         |___/          |_|                     |___/  v2.0.0
 #
 # An Archipelago Discord Bot
 #                - By the Zajcats
@@ -133,7 +133,7 @@ else:
 
 # Version Checking against GitHub
 try:
-    BPversion = "live-v1.3.0"
+    BPversion = "live-v2.0.0"
     GHAPIjson = json.loads(requests.get("https://api.github.com/repos/Quasky/bridgeipelago/releases/latest").content)
     if(GHAPIjson["tag_name"] != BPversion):
         print("You are not running the current release of Bridgeipelago.")
@@ -1082,16 +1082,17 @@ async def Command_CheckCount():
         checkmessage = "```" + slot.ljust(SlotWidth) + " || " + game.ljust(GameWidth) + " || " + checks.ljust(ChecksWidth) + " || " + percent +"\n"
 
         for row in rows:
+            if len(checkmessage) > 1500:
+                checkmessage = checkmessage + "```"
+                await MainChannel.send(checkmessage)
+                checkmessage = "```"
             slot = (row.find_all('td')[1].text).strip()
             game = (row.find_all('td')[2].text).strip()
             status = (row.find_all('td')[3].text).strip()
             checks = (row.find_all('td')[4].text).strip()
             percent = (row.find_all('td')[5].text).strip()
             checkmessage = checkmessage + slot.ljust(SlotWidth) + " || " + game.ljust(GameWidth) + " || " + checks.ljust(ChecksWidth) + " || " + percent + "\n"
-            if len(checkmessage) > 1900:
-                checkmessage = checkmessage + "```"
-                await MainChannel.send(checkmessage)
-                checkmessage = "```"
+
 
         #Finishes the check message
         checkmessage = checkmessage + "```"
