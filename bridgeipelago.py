@@ -102,9 +102,6 @@ ArchStatus = ArchDataDirectory + 'ArchStatus.json'
 if ArchPassword == None or ArchPassword == "<your_archipelago_password>":
     ArchPassword = None
 
-if ArchPassword == None or ArchPassword == "<your_archipelago_password>":
-    ArchPassword = None
-
 if DebugMode == "true":
     logging.basicConfig(
         filename='bridge.log',
@@ -159,32 +156,6 @@ tree = app_commands.CommandTree(DiscordClient)
 
 #TO DO - Central Control for bot I'll just leave this in for now.
 DiscordGuildID = 1171964435741544498
-
-# Make sure all of the directories exist before we start creating files
-if not os.path.exists(ArchDataDirectory):
-    os.makedirs(ArchDataDirectory)
-
-if not os.path.exists(LoggingDirectory):
-    os.makedirs(LoggingDirectory)
-
-if not os.path.exists(RegistrationDirectory):
-    os.makedirs(RegistrationDirectory)
-
-if not os.path.exists(ItemQueueDirectory):
-    os.makedirs(ItemQueueDirectory)
-
-#Logfile Initialization. We need to make sure the log files exist before we start writing to them.
-l = open(DeathFileLocation, "a")
-l.close()
-
-l = open(OutputFileLocation, "a")
-l.close()
-
-l = open(DeathTimecodeLocation, "a")
-l.close()
-
-l = open(ArchStatus, "a")
-l.close()
 
 # Load Meta Modules if they are enabled in the .env
 if EnableFlavorDeathlink == "true":
@@ -1277,6 +1248,33 @@ async def Command_ArchInfo(message):
         await message.channel.send("Debug Mode is disabled.")
 
 ## HELPER FUNCTIONS
+def ConfirmSpecialFiles():
+    # Make sure all of the directories exist before we start creating files
+    if not os.path.exists(ArchDataDirectory):
+        os.makedirs(ArchDataDirectory)
+
+    if not os.path.exists(LoggingDirectory):
+        os.makedirs(LoggingDirectory)
+
+    if not os.path.exists(RegistrationDirectory):
+        os.makedirs(RegistrationDirectory)
+
+    if not os.path.exists(ItemQueueDirectory):
+        os.makedirs(ItemQueueDirectory)
+
+    #Logfile Initialization. We need to make sure the log files exist before we start writing to them.
+    l = open(DeathFileLocation, "a")
+    l.close()
+
+    l = open(OutputFileLocation, "a")
+    l.close()
+
+    l = open(DeathTimecodeLocation, "a")
+    l.close()
+
+    if not os.path.exists(ArchStatus):
+        json.dump({}, open(ArchStatus, "w"))
+
 def WriteDataPackage(data):
     with open(ArchGameDump, 'w') as f:
         json.dump(data['data']['games'], f)
@@ -1357,14 +1355,24 @@ def LookupGame(slot):
     return str("NULL")
 
 def CheckSnoozeStatus(slot):
-    if SnoozeCompletedGames == "true":
-        TempStatusJSON = json.load(open(ArchStatus, 'r'))
-        for key in TempStatusJSON:
-            if key == slot:
-                return True
+    try:
+        if SnoozeCompletedGames == "true":
+            TempStatusJSON = json.load(open(ArchStatus, 'r'))
+            for key in TempStatusJSON:
+                if key == slot:
+                    return True
+            return False
+        else:
+            return False
+    except json.JSONDecodeError as e:
+        print("!!! JSON Decode Error in CheckSnoozeStatus - Resetting ArchStatus.json just to be safe :)")
+        with open(ArchStatus, 'w') as f:
+            json.dump({}, f)
+        return CheckSnoozeStatus(slot)
+    except Exception as e:
+        print("Error checking Snooze for: " + slot + " - " + str(e))
         return False
-    else:
-        return False
+
 
 def ItemFilter(itmclass,itmfilterlevel):
     #Item Classes are stored in a bit array
@@ -1527,27 +1535,8 @@ def ConfirmDataLocations():
     ArchRoomData = ArchDataDirectory + 'ArchRoomData.json'
     ArchStatus = ArchDataDirectory + 'ArchStatus.json'
 
-    #We'll confirm the files/directories exist fo we can write to them. 
-    if not os.path.exists(ArchDataDirectory):
-        os.makedirs(ArchDataDirectory)
-
-    if not os.path.exists(LoggingDirectory):
-        os.makedirs(LoggingDirectory)
-
-    if not os.path.exists(RegistrationDirectory):
-        os.makedirs(RegistrationDirectory)
-
-    if not os.path.exists(ItemQueueDirectory):
-        os.makedirs(ItemQueueDirectory)
-
-    l = open(DeathFileLocation, "a")
-    l.close()
-
-    l = open(OutputFileLocation, "a")
-    l.close()
-
-    l = open(DeathTimecodeLocation, "a")
-    l.close()
+    # Confirm all of the core directories and files exist
+    ConfirmSpecialFiles()
 
 def ReloadJSONPackages():
     global ArchGameJSON
@@ -1566,6 +1555,11 @@ async def CancelProcess():
 def Discord():
     print("++ Starting Discord Client")
     DiscordClient.run(DiscordToken)
+
+
+# ====== MAIN SCRIPT START ====
+# Confirm all of the core directories and files exist just to be safe
+ConfirmSpecialFiles()
 
 ## Threadded async functions
 if(DiscordJoinOnly == "false"):
