@@ -52,6 +52,7 @@ DiscordDebugChannel = int(os.getenv('DiscordDebugChannel'))
 
 ArchHost = os.getenv('ArchipelagoServer')
 ArchPort = os.getenv('ArchipelagoPort')
+ArchPassword = os.getenv('ArchipelagoPassword')
 ArchipelagoBotSlot = os.getenv('ArchipelagoBotSlot')
 ArchTrackerURL = os.getenv('ArchipelagoTrackerURL')
 ArchServerURL = os.getenv('ArchipelagoServerURL')
@@ -78,6 +79,7 @@ RegistrationDirectory = os.getcwd() + os.getenv('PlayerRegistrationDirectory') +
 ItemQueueDirectory = os.getcwd() + os.getenv('PlayerItemQueueDirectory') + UniqueID + '/'
 ArchDataDirectory = os.getcwd() + os.getenv('ArchipelagoDataDirectory') + UniqueID + '/'
 QueueOverclock = float(os.getenv('QueueOverclock'))
+SnoozeCompletedGames = os.getenv('SnoozeCompletedGames')
 JoinMessage = os.getenv('JoinMessage')
 DebugMode = os.getenv('DebugMode')
 DiscordJoinOnly = os.getenv('DiscordJoinOnly')
@@ -95,6 +97,10 @@ CheckPlotLocation = LoggingDirectory + 'CheckPlot.png'
 ArchGameDump = ArchDataDirectory + 'ArchGameDump.json'
 ArchConnectionDump = ArchDataDirectory + 'ArchConnectionDump.json'
 ArchRoomData = ArchDataDirectory + 'ArchRoomData.json'
+ArchStatus = ArchDataDirectory + 'ArchStatus.json'
+
+if ArchPassword == None or ArchPassword == "<your_archipelago_password>":
+    ArchPassword = None
 
 if DebugMode == "true":
     logging.basicConfig(
@@ -124,6 +130,7 @@ discordseppuku_queue = Queue()
 websocket_queue = Queue()
 lottery_queue = Queue()
 port_queue = Queue()
+password_queue = Queue()
 discordbridge_queue = Queue()
 
 if(DebugMode == "true"):
@@ -150,29 +157,6 @@ tree = app_commands.CommandTree(DiscordClient)
 #TO DO - Central Control for bot I'll just leave this in for now.
 DiscordGuildID = 1171964435741544498
 
-# Make sure all of the directories exist before we start creating files
-if not os.path.exists(ArchDataDirectory):
-    os.makedirs(ArchDataDirectory)
-
-if not os.path.exists(LoggingDirectory):
-    os.makedirs(LoggingDirectory)
-
-if not os.path.exists(RegistrationDirectory):
-    os.makedirs(RegistrationDirectory)
-
-if not os.path.exists(ItemQueueDirectory):
-    os.makedirs(ItemQueueDirectory)
-
-#Logfile Initialization. We need to make sure the log files exist before we start writing to them.
-l = open(DeathFileLocation, "a")
-l.close()
-
-l = open(OutputFileLocation, "a")
-l.close()
-
-l = open(DeathTimecodeLocation, "a")
-l.close()
-
 # Load Meta Modules if they are enabled in the .env
 if EnableFlavorDeathlink == "true":
     from modules.DeathlinkFlavor import GetFlavorText
@@ -196,6 +180,7 @@ class TrackerClient:
         *,
         server_uri: str,
         port: str,
+        password: str,
         slot_name: str,
         on_death_link: callable = None,
         on_item_send: callable = None,
@@ -206,6 +191,7 @@ class TrackerClient:
     ) -> None:
         self.server_uri = server_uri
         self.port = port
+        self.password = password
         self.slot_name = slot_name
         self.on_death_link = on_death_link
         self.on_item_send = on_item_send
@@ -226,8 +212,6 @@ class TrackerClient:
 
             while not self.is_closed.is_set():
                 #=== Message Loop ===#
-
-
                 try:
                     RawMessage = self.ap_connection.recv(timeout=QueueOverclock)
                     for i in range(len(json.loads(RawMessage))):
@@ -257,6 +241,9 @@ class TrackerClient:
                                 if EnableServerChatMessages == "true" and self.on_chat_send:
                                      self.on_chat_send(args)
                             elif args.get('type') == 'Goal':
+                                print("writting to archstatus")
+                                print(args,"===============")
+                                WriteToArchStatus(args)
                                 if EnableGoalMessages == "true" and self.on_chat_send:
                                     self.on_chat_send(args)
                             elif args.get('type') == 'Release':
@@ -310,7 +297,7 @@ class TrackerClient:
         payload = {
             'cmd': 'Connect',
             'game': '',
-            'password': None,
+            'password': self.password,
             'name': self.slot_name,
             'version': self.version,
             'tags': list(self.tags),
@@ -350,6 +337,14 @@ class TrackerClient:
             except:
                 pass
             self.port = tempport
+        if not password_queue.empty():
+            while not password_queue.empty():
+                temppass = password_queue.get()
+            try:
+                clearqueueuue = self.ap_connection.recv(timeout=0.1)
+            except:
+                pass
+            self.password = temppass
         try:
             self.is_closed.clear()
             self.ap_connection = connect(
@@ -418,7 +413,7 @@ async def on_message(message):
     # When the user asks, catch them up on checks they're registered for
     ## Yoinks their registration file, scans through it, then find the related ItemQueue file to scan through 
     if message.content.startswith('$ketchmeup'):
-        await Command_KetchMeUp(message.author)
+        await Command_KetchMeUp(message.author, message.content)
     
     # When the user asks, catch them up on the specified game
     ## Yoinks the specified ItemQueue file, scans through it, then sends the contents to the user
@@ -504,9 +499,10 @@ async def CheckArchHost():
                 print("Port Check Failed")
                 print(RoomData["last_port"])
                 print(ArchPort)
-                message = "Port Check Failed - Restart tracker process <@"+DiscordAlertUserID+">"
+                message = "Port Check Failed.  New port is " + str(RoomData["last_port"]) + "."
                 #await MainChannel.send(message)
                 await DebugChannel.send(message)
+                SetEnvVariable("ArchipelagoPort", str(RoomData["last_port"]))
         except Exception as e:
             WriteToErrorLog("CheckArchHost", "Error occurred while checking ArchHost: " + str(e))
             await DebugChannel.send("ERROR IN CHECKARCHHOST <@"+DiscordAlertUserID+">")
@@ -525,6 +521,7 @@ async def ProcessItemQueue():
             if query == " found their ":
                 game = str(LookupGame(itemmessage['data'][0]['text']))
                 name = str(LookupSlot(itemmessage['data'][0]['text']))
+                recipient = name
                 item = str(LookupItem(game,itemmessage['data'][2]['text']))
                 itemclass = str(itemmessage['data'][2]['flags'])
                 location = str(LookupLocation(game,itemmessage['data'][4]['text']))
@@ -552,7 +549,7 @@ async def ProcessItemQueue():
                 message = "" + name + " sent " + iitem + " to " + recipient + "\nCheck: " + location
             
 
-                ItemCheckLogMessage = recipient + "||" + item + "||" + name + "||" + location + "\n"
+                ItemCheckLogMessage = recipient + "||" + item + "||" + name + "||" + location + "||" + itemclass + "\n"
                 BotLogMessage = timecode + "||" + ItemCheckLogMessage
                 o = open(OutputFileLocation, "a")
                 o.write(BotLogMessage)
@@ -575,9 +572,12 @@ async def ProcessItemQueue():
 
             message = "```ansi\n" + message + "```"
 
-            if int(itemclass) == 4 and SpoilTraps == 'true':
+            # If this item is for a player who's snoozed, we skip sending the message entirely
+            if CheckSnoozeStatus(recipient):
+                await CancelProcess()
+            elif int(itemclass) == 4 and SpoilTraps == 'true':
                 await SendMainChannelMessage(message)
-            elif int(itemclass) != 4 and ItemFilter(int(itemclass)):
+            elif int(itemclass) != 4 and ItemFilter(int(itemclass),ItemFilterLevel):
                 await SendMainChannelMessage(message)
             else:
                 #In Theory, this should only be called when the two above conditions are not met
@@ -639,10 +639,10 @@ async def first_command(interaction):
     description="Ketches the user up with missed items",
     guild=discord.Object(id=DiscordGuildID)
 )
-async def first_command(interaction):
+async def first_command(interaction,filter:str):
     await interaction.user.create_dm()
     UserDM = interaction.user
-    await Command_KetchMeUp(UserDM)
+    await Command_KetchMeUp(UserDM, interaction.message.content)
     await interaction.response.send_message(content="Sending your missed items... Please Hold.",ephemeral=True)
 
 @tree.command(name="groupcheck",
@@ -749,8 +749,19 @@ async def Command_ClearReg(Sender:str):
         print(e)
         await DebugChannel.send("ERROR IN CLEARREG <@"+DiscordAlertUserID+">")
 
-async def Command_KetchMeUp(User):
+async def Command_KetchMeUp(User, message_filter):
     try:
+        message_filter = message_filter.replace("$ketchmeup","")
+        message_filter = message_filter.replace("/ketchmeup","")
+        message_filter = message_filter.strip()
+
+        if message_filter == "" or message_filter == None:
+            message_filter = 0
+        try:
+            message_filter = int(message_filter)
+        except:
+            message_filter = 0
+
         RegistrationFile = RegistrationDirectory + str(User) + ".json"
         if not os.path.isfile(RegistrationFile):
             await User.send("You've not registered for a slot : (")
@@ -797,8 +808,13 @@ async def Command_KetchMeUp(User):
                     Item = line.split("||")[1].strip()
                     Sender = line.split("||")[2].strip()
                     Location = line.split("||")[3].strip()
-                    ketchupmessage = ketchupmessage + You.ljust(YouWidth) + " || " + Item.ljust(ItemWidth) + " || " + Sender.ljust(SenderWidth) + " || " + Location + "\n"
-                    
+                    Class = line.split("||")[4].strip()
+
+                    print(Class)
+                    print(message_filter)
+                    if ItemFilter(int(Class),int(message_filter)):
+                        ketchupmessage = ketchupmessage + You.ljust(YouWidth) + " || " + Item.ljust(ItemWidth) + " || " + Sender.ljust(SenderWidth) + " || " + Location + "\n"
+
                     if len(ketchupmessage) > 1500:
                         ketchupmessage = ketchupmessage + "```"
                         await User.send(ketchupmessage)
@@ -1232,6 +1248,33 @@ async def Command_ArchInfo(message):
         await message.channel.send("Debug Mode is disabled.")
 
 ## HELPER FUNCTIONS
+def ConfirmSpecialFiles():
+    # Make sure all of the directories exist before we start creating files
+    if not os.path.exists(ArchDataDirectory):
+        os.makedirs(ArchDataDirectory)
+
+    if not os.path.exists(LoggingDirectory):
+        os.makedirs(LoggingDirectory)
+
+    if not os.path.exists(RegistrationDirectory):
+        os.makedirs(RegistrationDirectory)
+
+    if not os.path.exists(ItemQueueDirectory):
+        os.makedirs(ItemQueueDirectory)
+
+    #Logfile Initialization. We need to make sure the log files exist before we start writing to them.
+    l = open(DeathFileLocation, "a")
+    l.close()
+
+    l = open(OutputFileLocation, "a")
+    l.close()
+
+    l = open(DeathTimecodeLocation, "a")
+    l.close()
+
+    if not os.path.exists(ArchStatus):
+        json.dump({}, open(ArchStatus, "w"))
+
 def WriteDataPackage(data):
     with open(ArchGameDump, 'w') as f:
         json.dump(data['data']['games'], f)
@@ -1243,6 +1286,18 @@ def WriteArchConnectionJSON(data):
 def WriteRoomInfo(data):
     with open(ArchRoomData, 'w') as f:
         json.dump(data, f)
+
+def WriteToArchStatus(data):
+        #Try and read the data, if it doesn't work, make it blank.
+        try:
+            status_data = json.load(open(ArchStatus, 'r'))
+        except:
+            status_data = {}
+            json.dump(status_data, open(ArchStatus, 'w'))
+
+        status_data = json.load(open(ArchStatus, 'r'))
+        status_data[LookupSlot(str(data["slot"]))] = "Goal"
+        json.dump(status_data, open(ArchStatus, 'w'))
 
 def CheckDatapackage():
     if os.path.exists(ArchGameDump):
@@ -1299,7 +1354,27 @@ def LookupGame(slot):
             return str(ArchConnectionJSON['slot_info'][key]['game'])
     return str("NULL")
 
-def ItemFilter(itmclass):
+def CheckSnoozeStatus(slot):
+    try:
+        if SnoozeCompletedGames == "true":
+            TempStatusJSON = json.load(open(ArchStatus, 'r'))
+            for key in TempStatusJSON:
+                if key == slot:
+                    return True
+            return False
+        else:
+            return False
+    except json.JSONDecodeError as e:
+        print("!!! JSON Decode Error in CheckSnoozeStatus - Resetting ArchStatus.json just to be safe :)")
+        with open(ArchStatus, 'w') as f:
+            json.dump({}, f)
+        return CheckSnoozeStatus(slot)
+    except Exception as e:
+        print("Error checking Snooze for: " + slot + " - " + str(e))
+        return False
+
+
+def ItemFilter(itmclass,itmfilterlevel):
     #Item Classes are stored in a bit array
     #0bCBA Where:
     #A is if the item is progression / logical
@@ -1313,19 +1388,19 @@ def ItemFilter(itmclass):
     #
     # (Bits are checked from right to left, so array 0b43210)
 
-    if ItemFilterLevel == 2:
+    if itmfilterlevel == 2:
         if(itmclass & ( 1 << 0 )):
             return True
         else:
             return False
-    elif ItemFilterLevel == 1:
+    elif itmfilterlevel == 1:
         if(itmclass & ( 1 << 0 )):
             return True
         elif(itmclass & ( 1 << 1 )):
             return True
         else:
             return False
-    elif ItemFilterLevel == 0:
+    elif itmfilterlevel == 0:
         return True
     else:
         #If the filter is misconfigured, just send the item. It's the user's fault. :)
@@ -1392,13 +1467,17 @@ def SpecialFormat(text,color,format):
     return itext
 
 def SetEnvVariable(key, value):
-    if key not in ["ArchipelagoPort","ArchipelagoTrackerURL","ArchipelagoServerURL","UniqueID"]:
-        return "Invalid key. Only 'ArchipelagoPort', 'ArchipelagoTrackerURL', 'ArchipelagoServerURL', and 'UniqueID' can be set."
+    if key not in ["ArchipelagoPort","ArchipelagoPassword","ArchipelagoTrackerURL","ArchipelagoServerURL","UniqueID"]:
+        return "Invalid key. Only 'ArchipelagoPort', 'ArchipelagoPassword', 'ArchipelagoTrackerURL', 'ArchipelagoServerURL', and 'UniqueID' can be set."
     else:
         if key == "ArchipelagoPort":
             global ArchPort
             ArchPort = value
             port_queue.put(value)
+        elif key == "ArchipelagoPassword":
+            global ArchPassword
+            ArchPassword = value
+            password_queue.put(value)
         elif key == "ArchipelagoTrackerURL":
             global ArchTrackerURL
             ArchTrackerURL = value
@@ -1408,7 +1487,7 @@ def SetEnvVariable(key, value):
         elif key == "UniqueID":
             global UniqueID
             UniqueID = value
-        set_key(dotenv_path=EnvPath, key_to_set=key, value_to_set=value)
+        set_key(dotenv_path=EnvPath, key_to_set=key, value_to_set=value, quote_mode='auto')
 
         #We'll reconfirm and reload the data locations since we can change values. It's no harm to reapply them all for the heck of it.
         ConfirmDataLocations()
@@ -1437,6 +1516,7 @@ def ConfirmDataLocations():
     global ArchGameDump
     global ArchConnectionDump
     global ArchRoomData
+    global ArchStatus
     LoggingDirectory = os.getcwd() + os.getenv('LoggingDirectory') + UniqueID + '/'
     RegistrationDirectory = os.getcwd() + os.getenv('PlayerRegistrationDirectory') + UniqueID + '/'
     ItemQueueDirectory = os.getcwd() + os.getenv('PlayerItemQueueDirectory') + UniqueID + '/'
@@ -1453,28 +1533,10 @@ def ConfirmDataLocations():
     ArchGameDump = ArchDataDirectory + 'ArchGameDump.json'
     ArchConnectionDump = ArchDataDirectory + 'ArchConnectionDump.json'
     ArchRoomData = ArchDataDirectory + 'ArchRoomData.json'
+    ArchStatus = ArchDataDirectory + 'ArchStatus.json'
 
-    #We'll confirm the files/directories exist fo we can write to them. 
-    if not os.path.exists(ArchDataDirectory):
-        os.makedirs(ArchDataDirectory)
-
-    if not os.path.exists(LoggingDirectory):
-        os.makedirs(LoggingDirectory)
-
-    if not os.path.exists(RegistrationDirectory):
-        os.makedirs(RegistrationDirectory)
-
-    if not os.path.exists(ItemQueueDirectory):
-        os.makedirs(ItemQueueDirectory)
-
-    l = open(DeathFileLocation, "a")
-    l.close()
-
-    l = open(OutputFileLocation, "a")
-    l.close()
-
-    l = open(DeathTimecodeLocation, "a")
-    l.close()
+    # Confirm all of the core directories and files exist
+    ConfirmSpecialFiles()
 
 def ReloadJSONPackages():
     global ArchGameJSON
@@ -1494,12 +1556,18 @@ def Discord():
     print("++ Starting Discord Client")
     DiscordClient.run(DiscordToken)
 
+
+# ====== MAIN SCRIPT START ====
+# Confirm all of the core directories and files exist just to be safe
+ConfirmSpecialFiles()
+
 ## Threadded async functions
 if(DiscordJoinOnly == "false"):
     # Start the tracker client
     tracker_client = TrackerClient(
         server_uri=ArchHost,
         port=ArchPort,
+        password=ArchPassword,
         slot_name=ArchipelagoBotSlot,
         verbose_logging=WSdbug,
         on_chat_send=lambda args : chat_queue.put(args),
@@ -1566,7 +1634,7 @@ def main():
             print("Seppuku Initiated - Goodbye Friend")
             exit(1)
 
-        if not tracker_client.socket_thread.is_alive() or not websocket_queue.empty():
+        if not DiscordJoinOnly and (not tracker_client.socket_thread.is_alive() or not websocket_queue.empty()):
             while not websocket_queue.empty():
                 SQMessage = websocket_queue.get()
                 print("!! clearing queue -- ", SQMessage)

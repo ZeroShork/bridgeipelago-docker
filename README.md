@@ -83,7 +83,11 @@ Hopefully that makes sense.
 |---|---|
 |$register \<slot>|Adds the slot provided to the user's registration file
 |$clearreg|Clears the user's registration file|
-|$ketchmeup|DMs the user all checks in their ItemQueue file, used to catch you up on missed checks|
+|$ketchmeup \<filter>|DMs the user all checks in their ItemQueue file, used to catch you up on missed checks|
+||2 - Only Logical Progression Items|
+||1 - Logical + Useful items|
+||0 or empty - Logical + Useful + Normal items + Traps\*|
+||\*Traps will only be sent if the filter is 0 AND BotItemSpoilTraps is enabled|
 |$groupcheck \<slot>|DMs the user all checks in the slot's ItemQueue file, used to catch up on group games|
 |$hints|DMs the hinted items for a player's registered slots|
 |$deathcount|Scans the deathlog and tallies up the current deathcount for each slot|
@@ -97,7 +101,7 @@ Hopefully that makes sense.
 |$reloadtracker|Forces the tracker client to reload|
 |$reloaddiscord|Forces the discord bot to reload|
 |$setenv \<key> \<value>|Allows you to set .env options via discord|
-||Current keys: ArchipelagoPort, ArchipelagoTrackerURL, ArchipelagoServerURL, UniqueID|
+||Current keys: ArchipelagoPort, ArchipelagoPassword, ArchipelagoTrackerURL, ArchipelagoServerURL, UniqueID|
 |$ArchInfo|\[CONSOLE] General bot details for debugging .env tables^|
 
 **\[^] DebugMode only commands**  
@@ -115,6 +119,7 @@ Hopefully that makes sense.
 |**Archipelago Config**||
 |ArchipelagoServer|The URL of the Archipelago server you'd like to connect to|
 |ArchipelagoPort|The port of the Archipelago server you'd like to connect to|
+|ArchipelagoPassword|The password of the Archipelago sroom you'd like to connect to|
 |ArchipelagoBotSlot|The name of the slot you'd like the bot to use when connecting to archipelago|
 |ArchipelagoTrackerURL|URL of the tracker you'd like to query|
 |ArchipelagoServerURL|URL of the server you'd like to query|
@@ -153,6 +158,7 @@ Hopefully that makes sense.
 ||0.5 - 2/second|
 ||0.2 - 5/second|
 ||0.1 - 10/second|
+|SnoozeCompletedGames|Enables skipping posting items to discord FOR completed games|
 |JoinMessage|A custom join message (console only) for the bot|
 |DebugMode|Enables extra debug chat/bot options^|
 |SelfHostNoWeb|Disabled WebHost-specific functionality for self-hosted games with no WebHost module|
