@@ -2,6 +2,7 @@ version: "3.8"  # Docker Compose file format version
 
 services:
   bridgeipelago:
+    image: ghcr.io/zeroshork/bridgeipelago-docker:latest
     build: data/apps/bridgeipelago  # Build the image using the Dockerfile in the current directory
     container_name: bridgeipelago  # Name the container "bridgeipelago" instead of a random hash
 
