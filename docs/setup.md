@@ -53,7 +53,12 @@ Right-Click the channels and "Copy Channel ID", and hold them for now!
 Next, right-click your name and "Copy User ID", copy it down.
 
 ## Step 4) Bridgeipelago Setup
-1. Clone the Repo
+1. Download Bridgeipelago  
+   - Stable:
+     - [Latest stable release](https://github.com/Quasky/bridgeipelago/releases/latest)
+   - Unstable (hopefully not):
+     - [All releases (Stable and Pre-Release)](https://github.com/Quasky/bridgeipelago/releases)
+     - Or clone the main repo for a crazy expierience `https://github.com/Quasky/bridgeipelago.git`
 1. Copy .env.template to .env
 - Discord Config
 1. Fill out the 'DiscordToken' with your discord app/bot's token
