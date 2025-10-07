@@ -617,7 +617,8 @@ async def ProcessChatQueue():
     else:
         chatmessage = chat_queue.get()
         if not (chatmessage['data'][0]['text']).startswith(ArchipelagoBotSlot):
-            await SendMainChannelMessage(chatmessage['data'][0]['text'])
+            if not chatmessage['message'].lower().startswith("!"):
+                await SendMainChannelMessage(chatmessage['data'][0]['text'])
 
 @tree.command(name="register",
     description="Registers you for AP slot",
