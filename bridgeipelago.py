@@ -68,6 +68,23 @@ EnableReleaseMessages = os.getenv('ReleaseMessages')
 EnableCollectMessages = os.getenv('CollectMessages')
 EnableCountdownMessages = os.getenv('CountdownMessages')
 EnableDeathlinkMessages = os.getenv('DeathlinkMessages')
+EnableAPClientHelp = os.getenv('APClientHelp')
+EnableAPClientLicense = os.getenv('APClientLicense')
+EnableAPClientCountdown = os.getenv('APClientCountdown')
+EnableAPClientOptions = os.getenv('APClientOptions')
+EnableAPClientAdmin = os.getenv('APClientAdmin')
+EnableAPClientPlayers = os.getenv('APClientPlayers')
+EnableAPClientStatus = os.getenv('APClientStatus')
+EnableAPClientRelease = os.getenv('APClientRelease')
+EnableAPClientCollect = os.getenv('APClientCollect')
+EnableAPClientRemaining = os.getenv('APClientRemaining')
+EnableAPClientMissing = os.getenv('APClientMissing')
+EnableAPClientChecked = os.getenv('APClientChecked')
+EnableAPClientAlias = os.getenv('APClientAlias')
+EnableAPClientGetItem = os.getenv('APClientGetItem')
+EnableAPClientHint = os.getenv('APClientHint')
+EnableAPClientHintLocation = os.getenv('APClientHintLocation')
+EnableAPClientVideo = os.getenv('APClientVideo')
 
 EnableDiscordBridge = os.getenv('DiscordBridgeEnabled')
 
@@ -617,8 +634,46 @@ async def ProcessChatQueue():
     else:
         chatmessage = chat_queue.get()
         if not (chatmessage['data'][0]['text']).startswith(ArchipelagoBotSlot):
-            await SendMainChannelMessage(chatmessage['data'][0]['text'])
-
+            if not chatmessage['message'].lower().startswith("!"):
+                await SendMainChannelMessage(chatmessage['data'][0]['text'])
+            else:
+                if EnableAPClientHelp == "true" and chatmessage['message'].lower().startswith("!help"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientLicense == "true" and chatmessage['message'].lower().startswith("!license"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientCountdown == "true" and chatmessage['message'].lower().startswith("!countdown"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientOptions == "true" and chatmessage['message'].lower().startswith("!options"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientAdmin == "true" and chatmessage['message'].lower().startswith("!admin"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientPlayers == "true" and chatmessage['message'].lower().startswith("!players"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientStatus == "true" and chatmessage['message'].lower().startswith("!status"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientRelease == "true" and chatmessage['message'].lower().startswith("!release"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientCollect == "true" and chatmessage['message'].lower().startswith("!collect"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientRemaining == "true" and chatmessage['message'].lower().startswith("!remaining"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientMissing == "true" and chatmessage['message'].lower().startswith("!missing"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientChecked == "true" and chatmessage['message'].lower().startswith("!checked"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientAlias == "true" and chatmessage['message'].lower().startswith("!alias"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientGetItem == "true" and chatmessage['message'].lower().startswith("!getitem"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientHint == "true" and chatmessage['message'].lower().startswith("!hint"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientHintLocation == "true" and chatmessage['message'].lower().startswith("!hint_location"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                elif EnableAPClientVideo == "true" and chatmessage['message'].lower().startswith("!video"):
+                    await SendMainChannelMessage(chatmessage['data'][0]['text'])
+                else:
+                    await CancelProcess()
+                    
 @tree.command(name="register",
     description="Registers you for AP slot",
     guild=discord.Object(id=DiscordGuildID)
@@ -1634,7 +1689,7 @@ def main():
             print("Seppuku Initiated - Goodbye Friend")
             exit(1)
 
-        if not DiscordJoinOnly and (not tracker_client.socket_thread.is_alive() or not websocket_queue.empty()):
+        if (DiscordJoinOnly=="false") and (not tracker_client.socket_thread.is_alive() or not websocket_queue.empty()):
             while not websocket_queue.empty():
                 SQMessage = websocket_queue.get()
                 print("!! clearing queue -- ", SQMessage)
