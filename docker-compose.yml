@@ -6,14 +6,18 @@ services:
     build: data/apps/bridgeipelago  # Build the image using the Dockerfile in the current directory
     container_name: bridgeipelago  # Name the container "bridgeipelago" instead of a random hash
 
+    working_dir: /bridgeipelago
+
     restart: unless-stopped  # Auto-restart if it crashes or on reboot, but not if manually stopped
 
     env_file:
       - .env  # Load environment variables (like Discord token, server URL) from the .env file
 
     volumes:
-      - bridgeipelago_logs:/app/logs  # Persist logs to a named volume
-      - bridgeipelago_data:/app/archdata  # Persist registration queues and Archipelago dump data
+      - ./bridgeipelago/logs:/bridgeipelago/logs
+      - ./bridgeipelago/RegistrationData:/bridgeipelago/RegistrationData
+      - ./bridgeipelago/ItemQueue:/bridgeipelago/ItemQueue
+      - ./bridgeipelago/ArchData:/bridgeipelago/ArchData
 
     tty: true  # Keep the container’s terminal open (useful for debugging)
     stdin_open: true  # Allow interactive input if you attach to the container later
