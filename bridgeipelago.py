@@ -408,6 +408,7 @@ class HintClient:
         self.ap_connection: ClientConnection = None
         self.socket_thread: Thread = None
         self.is_closed = Event()
+        self.hintqueuepayload = hintprocessing_queue.get()
 
     def run(self):
         global CoreConfig
@@ -497,6 +498,7 @@ class HintClient:
         self.ap_connection.close()
 
     def start(self) -> None:
+        
         print("-- Attempting to open an HintClient connection in a new thread.")
         try:
             _ConnectionString = str(CoreConfig["ArchipelagoConfig"]['ArchipelagoServer']) + ":" + str(CoreConfig["ArchipelagoConfig"]['ArchipelagoPort'])
@@ -514,10 +516,9 @@ class HintClient:
             print(e)
             chat_queue.put("!! HintClient start error...")
 
-    def process_hint(self) -> None:
+    def process_hint(self, ) -> None:
         print("-- Requesting Hint from server.")
-        received_payload = hintprocessing_queue.get()
-        received_payload = "!hint " + str(received_payload)
+        received_payload = "!hint " + str(self.hintqueuepayload)
         payload = {
             'cmd': 'Say',
             'text': str(received_payload)}
