@@ -110,6 +110,8 @@ def GetCoreDirectory(folder):
         return str(os.getcwd() + CoreConfig["AdvancedConfig"]["PlayerItemQueueDirectory"] + CoreConfig["ArchipelagoConfig"]['UniqueID'] + '/')
     elif folder == "arch":
         return str(os.getcwd() + CoreConfig["AdvancedConfig"]["ArchipelagoDataDirectory"] + CoreConfig["ArchipelagoConfig"]['UniqueID'] + '/')
+    elif folder == "core":
+        return str(os.getcwd())
     
 def GetCoreFiles(file):
     global CoreConfig
@@ -136,6 +138,8 @@ def GetCoreFiles(file):
         return GetCoreDirectory("arch") + 'ArchRoomData.json'
     elif file == "archstatus":
         return GetCoreDirectory("arch") + 'ArchStatus.json'
+    elif file == "lang":
+        return GetCoreDirectory("core") + CoreConfig["MetaConfig"]["LanguageFile"] + ".lang"
 
 def SetupLogger():
     global CoreConfig
@@ -725,12 +729,12 @@ async def ProcessItemQueue():
                 o.close()
 
                 if int(itemclass) == 4 and CoreConfig["ItemFilterConfig"]["BotItemSpoilTraps"] == True:
-                    ItemQueueFile = GetCoreDirectory("item") + recipient + ".csv"
+                    ItemQueueFile = GetCoreDirectory("item") + recipient.lower() + ".csv"
                     i = open(ItemQueueFile, "a")
                     i.write(ItemCheckLogMessage)
                     i.close()
                 elif int(itemclass) != 4:
-                    ItemQueueFile = GetCoreDirectory("item") + recipient + ".csv"
+                    ItemQueueFile = GetCoreDirectory("item") + recipient.lower() + ".csv"
                     i = open(ItemQueueFile, "a")
                     i.write(ItemCheckLogMessage)
                     i.close()
@@ -1062,7 +1066,7 @@ async def Command_KetchMeUp(User, message_filter):
         else:
             RegistrationContents = json.load(open(RegistrationFile, "r"))
             for reglines in RegistrationContents:
-                ItemQueueFile = GetCoreDirectory("item") + reglines.strip() + ".csv"
+                ItemQueueFile = GetCoreDirectory("item") + (reglines.lower()).strip() + ".csv"
                 if not os.path.isfile(ItemQueueFile):
                     await User.send("There are no items for " + reglines.strip() + " :/")
                     continue
@@ -1427,6 +1431,7 @@ async def Command_CheckGraph():
         GameState = {}
         #Moves through rows for data
         for row in rows:
+            # print("counting row")
             slot = (row.find_all('td')[1].text).strip()
             game = (row.find_all('td')[2].text).strip()
             status = (row.find_all('td')[3].text).strip()
@@ -1444,6 +1449,7 @@ async def Command_CheckGraph():
 
         ### PLOTTING CODE ###
         with plt.xkcd():
+            # print("BUILDING PLOT")
             plt.logging.getLogger('matplotlib.font_manager').disabled = True
 
             # Change length of plot long axis based on player count
@@ -1802,6 +1808,14 @@ def WriteToErrorLog(module,message):
     with open(GetCoreFiles("errorlog"), 'a') as f:
         put = "["+str(time.strftime("%Y-%m-%d-%H-%M-%S"))+"],["+module+"]," + message
         f.write(put + "\n")
+        
+def GetLanguage(key):
+    try:
+        LanguagePack = json.loads(open(GetCoreFiles("lang")).read())
+        return LanguagePack[key]
+    except KeyError:
+        WriteToErrorLog("GetLanguage", "KeyError for language key: " + str(key))
+        return "LANG_KEY_ERROR"
 
 async def CancelProcess():
     return 69420
