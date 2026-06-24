@@ -1840,7 +1840,6 @@ def main():
 
     # Version Checking against GitHub
     try:
-        print(__name__)
         BPversion = "pre-v3.0.0"
         GHAPIjson = json.loads(requests.get("https://api.github.com/repos/Quasky/bridgeipelago/releases/latest").content)
         if(GHAPIjson["tag_name"] != BPversion):
