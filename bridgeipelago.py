@@ -50,6 +50,9 @@ import discord
 from discord import app_commands
 import time
 
+# Bridgeipelago Optional Modules
+from modules.DeathlinkFlavor import GetFlavorText
+
 global CoreConfig
 global ConfigLock
 global ToggleConfig
@@ -193,12 +196,6 @@ except Exception as e:
     OverClockValue = 1
 #TO DO - Central Control for bot I'll just leave this in for now.
 DiscordGuildID = 1171964435741544498
-
-#Optionaly Load in Meta Modules
-def LoadMetaModules():
-    # Load Meta Modules if they are enabled in the config
-    if CoreConfig["MetaConfig"]["FlavorDeathlink"] == True:
-        from modules.DeathlinkFlavor import GetFlavorText
 
 ## ARCHIPELAGO TRACKER CLIENT + CORE FUNCTION
 class TrackerClient():
@@ -1856,8 +1853,6 @@ def main():
     GenerateConfigManagers()
     #Setup Logging for the bot
     SetupLogger()
-    # Load all of the meta modules (if any)
-    LoadMetaModules()
     # Confirm all of the core directories and files exist just to be safe
     ConfirmSpecialFiles()
 
