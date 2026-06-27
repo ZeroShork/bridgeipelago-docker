@@ -50,6 +50,9 @@ import discord
 from discord import app_commands
 import time
 
+# Bridgeipelago Optional Modules
+from modules.DeathlinkFlavor import GetFlavorText
+
 global CoreConfig
 global ConfigLock
 global ToggleConfig
@@ -110,6 +113,8 @@ def GetCoreDirectory(folder):
         return str(os.getcwd() + CoreConfig["AdvancedConfig"]["PlayerItemQueueDirectory"] + CoreConfig["ArchipelagoConfig"]['UniqueID'] + '/')
     elif folder == "arch":
         return str(os.getcwd() + CoreConfig["AdvancedConfig"]["ArchipelagoDataDirectory"] + CoreConfig["ArchipelagoConfig"]['UniqueID'] + '/')
+    elif folder == "core":
+        return str(os.getcwd())
     
 def GetCoreFiles(file):
     global CoreConfig
@@ -136,6 +141,8 @@ def GetCoreFiles(file):
         return GetCoreDirectory("arch") + 'ArchRoomData.json'
     elif file == "archstatus":
         return GetCoreDirectory("arch") + 'ArchStatus.json'
+    elif file == "lang":
+        return GetCoreDirectory("core") + CoreConfig["MetaConfig"]["LanguageFile"] + ".lang"
 
 def SetupLogger():
     global CoreConfig
@@ -189,12 +196,6 @@ except Exception as e:
     OverClockValue = 1
 #TO DO - Central Control for bot I'll just leave this in for now.
 DiscordGuildID = 1171964435741544498
-
-#Optionaly Load in Meta Modules
-def LoadMetaModules():
-    # Load Meta Modules if they are enabled in the config
-    if CoreConfig["MetaConfig"]["FlavorDeathlink"] == True:
-        from modules.DeathlinkFlavor import GetFlavorText
 
 ## ARCHIPELAGO TRACKER CLIENT + CORE FUNCTION
 class TrackerClient():
@@ -404,6 +405,7 @@ class HintClient:
         self.ap_connection: ClientConnection = None
         self.socket_thread: Thread = None
         self.is_closed = Event()
+        self.hintqueuepayload = hintprocessing_queue.get()
 
     def run(self):
         global CoreConfig
@@ -493,6 +495,7 @@ class HintClient:
         self.ap_connection.close()
 
     def start(self) -> None:
+        
         print("-- Attempting to open an HintClient connection in a new thread.")
         try:
             _ConnectionString = str(CoreConfig["ArchipelagoConfig"]['ArchipelagoServer']) + ":" + str(CoreConfig["ArchipelagoConfig"]['ArchipelagoPort'])
@@ -510,10 +513,9 @@ class HintClient:
             print(e)
             chat_queue.put("!! HintClient start error...")
 
-    def process_hint(self) -> None:
+    def process_hint(self, ) -> None:
         print("-- Requesting Hint from server.")
-        received_payload = hintprocessing_queue.get()
-        received_payload = "!hint " + str(received_payload)
+        received_payload = "!hint " + str(self.hintqueuepayload)
         payload = {
             'cmd': 'Say',
             'text': str(received_payload)}
@@ -672,6 +674,14 @@ async def CheckArchHost():
                 #await MainChannel.send(message)
                 await DebugChannel.send(message)
                 SetConfigVariable("ArchipelagoPort", int(RoomData["last_port"]))
+        
+        # We catch both TypeError and JSONDecodeError becuase they are what are thrown when the Arch server is unresponsive.
+        # We don't REALLY mind these, as it's a byproduct of the server being offline and we're unable to fetch it properly.
+        # The bot will only scream when there is an unhandled error that we have to look into, as is the case with the other processes.
+        except TypeError as e:
+            WriteToErrorLog("CheckArchHost", "Error occurred while checking ArchHost: [TypeError] " + str(e))
+        except json.JSONDecodeError as e:
+            WriteToErrorLog("CheckArchHost", "Error occurred while checking ArchHost: [JSONDecodingError] " + str(e))
         except Exception as e:
             WriteToErrorLog("CheckArchHost", "Error occurred while checking ArchHost: " + str(e))
             await DebugChannel.send("ERROR IN CHECKARCHHOST <@"+str(CoreConfig["DiscordConfig"]["DiscordAlertUserID"])+">")
@@ -725,12 +735,12 @@ async def ProcessItemQueue():
                 o.close()
 
                 if int(itemclass) == 4 and CoreConfig["ItemFilterConfig"]["BotItemSpoilTraps"] == True:
-                    ItemQueueFile = GetCoreDirectory("item") + recipient + ".csv"
+                    ItemQueueFile = GetCoreDirectory("item") + recipient.lower() + ".csv"
                     i = open(ItemQueueFile, "a")
                     i.write(ItemCheckLogMessage)
                     i.close()
                 elif int(itemclass) != 4:
-                    ItemQueueFile = GetCoreDirectory("item") + recipient + ".csv"
+                    ItemQueueFile = GetCoreDirectory("item") + recipient.lower() + ".csv"
                     i = open(ItemQueueFile, "a")
                     i.write(ItemCheckLogMessage)
                     i.close()
@@ -1062,7 +1072,7 @@ async def Command_KetchMeUp(User, message_filter):
         else:
             RegistrationContents = json.load(open(RegistrationFile, "r"))
             for reglines in RegistrationContents:
-                ItemQueueFile = GetCoreDirectory("item") + reglines.strip() + ".csv"
+                ItemQueueFile = GetCoreDirectory("item") + (reglines.lower()).strip() + ".csv"
                 if not os.path.isfile(ItemQueueFile):
                     await User.send("There are no items for " + reglines.strip() + " :/")
                     continue
@@ -1427,6 +1437,7 @@ async def Command_CheckGraph():
         GameState = {}
         #Moves through rows for data
         for row in rows:
+            # print("counting row")
             slot = (row.find_all('td')[1].text).strip()
             game = (row.find_all('td')[2].text).strip()
             status = (row.find_all('td')[3].text).strip()
@@ -1444,6 +1455,7 @@ async def Command_CheckGraph():
 
         ### PLOTTING CODE ###
         with plt.xkcd():
+            # print("BUILDING PLOT")
             plt.logging.getLogger('matplotlib.font_manager').disabled = True
 
             # Change length of plot long axis based on player count
@@ -1802,6 +1814,14 @@ def WriteToErrorLog(module,message):
     with open(GetCoreFiles("errorlog"), 'a') as f:
         put = "["+str(time.strftime("%Y-%m-%d-%H-%M-%S"))+"],["+module+"]," + message
         f.write(put + "\n")
+        
+def GetLanguage(key):
+    try:
+        LanguagePack = json.loads(open(GetCoreFiles("lang")).read())
+        return LanguagePack[key]
+    except KeyError:
+        WriteToErrorLog("GetLanguage", "KeyError for language key: " + str(key))
+        return "LANG_KEY_ERROR"
 
 async def CancelProcess():
     return 69420
@@ -1828,7 +1848,6 @@ def main():
 
     # Version Checking against GitHub
     try:
-        print(__name__)
         BPversion = "pre-v3.0.0"
         GHAPIjson = json.loads(requests.get("https://api.github.com/repos/Quasky/bridgeipelago/releases/latest").content)
         if(GHAPIjson["tag_name"] != BPversion):
@@ -1841,8 +1860,6 @@ def main():
     GenerateConfigManagers()
     #Setup Logging for the bot
     SetupLogger()
-    # Load all of the meta modules (if any)
-    LoadMetaModules()
     # Confirm all of the core directories and files exist just to be safe
     ConfirmSpecialFiles()
 
