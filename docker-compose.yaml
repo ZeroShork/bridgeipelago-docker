@@ -6,6 +6,6 @@ services:
       - ./bridgeipelago/RegistrationData:/bridgeipelago/RegistrationData
       - ./bridgeipelago/ItemQueue:/bridgeipelago/ItemQueue
       - ./bridgeipelago/ArchData:/bridgeipelago/ArchData
-      - ./config.json:/bridgeipelago
+      - ./config.json:/bridgeipelago/config.json
     working_dir: /bridgeipelago
     restart: unless-stopped
