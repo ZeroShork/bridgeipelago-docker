@@ -3,8 +3,9 @@ services:
     build: .
     volumes:
       - ./bridgeipelago/logs:/bridgeipelago/logs
-      - ./bridgeipelago/RegistrationData:/bridgeipelago/RegistrationData
-      - ./bridgeipelago/ItemQueue:/bridgeipelago/ItemQueue
-      - ./bridgeipelago/ArchData:/bridgeipelago/ArchData
+      - ./bridgeipelago/registrationdata:/bridgeipelago/registrationdata
+      - ./bridgeipelago/itemqueue:/bridgeipelago/itemqueue
+      - ./bridgeipelago/archdata:/bridgeipelago/archdata
+      - ./bridgeipelago/config.json:/bridgeipelago/config.json
     working_dir: /bridgeipelago
     restart: unless-stopped
