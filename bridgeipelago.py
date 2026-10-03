@@ -53,16 +53,20 @@ import time
 # Bridgeipelago Optional Modules
 from modules.DeathlinkFlavor import GetFlavorText
 
+global ConfigManager
 global CoreConfig
 global ConfigLock
+global ToggleManager
 global ToggleConfig
 global ToggleLock
 
 # Global Configuration Loader
 ## This allows us to share the config across multiple processes/threads without issue
 def GenerateConfigManagers():
+    global ConfigManager
     global CoreConfig
     global ConfigLock
+    global ToggleManager
     global ToggleConfig
     global ToggleLock
     
@@ -1036,6 +1040,9 @@ async def Command_ListRegistrations(Sender):
             for slots in RegistrationContents:
                 Message = Message + slots + "\n"
             await Sender.send(Message)
+    except discord.Forbidden as e:
+        WriteToErrorLog("Command_ListRegistrations", "Can not send a DM to "+ str(Sender) + " - " + str(e))
+        await MainChannel.send("I can't send you a DM! Please check your privacy settings and try again.")
     except Exception as e:
         WriteToErrorLog("Command_ListRegistrations", "Error in list registrations command: " + str(e))
         print(e)
@@ -1124,6 +1131,9 @@ async def Command_KetchMeUp(User, message_filter):
                 ketchupmessage = ketchupmessage + "```"
                 if not ketchupmessage == "``````":
                     await User.send(ketchupmessage)
+    except discord.Forbidden as e:
+        WriteToErrorLog("Command_KetchMeUp", "Can not send a DM to "+ str(User) + " - " + str(e))
+        await MainChannel.send("I can't send you a DM! Please check your privacy settings and try again.")
     except Exception as e:
         WriteToErrorLog("Command_KetchMeUp", "Error in ketch me up command: " + str(e))
         print(e)
@@ -1149,6 +1159,9 @@ async def Command_GroupCheck(DMauthor, game):
             ketchupmessage = ketchupmessage + "```"
             if not ketchupmessage == "``````":
                 await DMauthor.send(ketchupmessage)
+    except discord.Forbidden as e:
+        WriteToErrorLog("Command_GroupCheck", "Can not send a DM to "+ str(DMauthor) + " - " + str(e))
+        await MainChannel.send("I can't send you a DM! Please check your privacy settings and try again.")
     except Exception as e:
         WriteToErrorLog("Command_GroupCheck", "Error in group check command: " + str(e))
         print(e)
@@ -1262,6 +1275,9 @@ async def Command_Hints(player):
                 checkmessage = checkmessage + "```"
                 if not checkmessage == "``````":
                     await player.send(checkmessage)
+    except discord.Forbidden as e:
+        WriteToErrorLog("Command_Hints", "Can not send a DM to "+ str(player) + " - " + str(e))
+        await MainChannel.send("I can't send you a DM! Please check your privacy settings and try again.")
     except Exception as e:
         WriteToErrorLog("Command_Hints", "Error in hints command: " + str(e))
         print(e)
@@ -1826,11 +1842,33 @@ def GetLanguage(key):
 async def CancelProcess():
     return 69420
 
-def Discord(shared_config,toggle_config):
+def Discord(shared_config,toggle_config,shared_item_queue, shared_death_queue, shared_chat_queue, shared_seppuku_queue, shared_discordseppuku_queue, shared_websocket_queue, shared_lottery_queue, shared_discordbridge_queue, shared_hint_queue, shared_hintprocessing_queue):
     global CoreConfig
     global ToggleConfig
+    global item_queue
+    global death_queue
+    global chat_queue
+    global seppuku_queue
+    global discordseppuku_queue
+    global websocket_queue
+    global lottery_queue
+    global discordbridge_queue
+    global hint_queue
+    global hintprocessing_queue
+
     CoreConfig = shared_config
     ToggleConfig = toggle_config
+    item_queue = shared_item_queue
+    death_queue = shared_death_queue
+    chat_queue = shared_chat_queue
+    seppuku_queue = shared_seppuku_queue
+    discordseppuku_queue = shared_discordseppuku_queue
+    websocket_queue = shared_websocket_queue
+    lottery_queue = shared_lottery_queue
+    discordbridge_queue = shared_discordbridge_queue
+    hint_queue = shared_hint_queue
+    hintprocessing_queue = shared_hintprocessing_queue
+
     print("++ Starting Discord Client")
     discord_client.run(str(CoreConfig["DiscordConfig"]["DiscordToken"]))
 
@@ -1848,7 +1886,7 @@ def main():
 
     # Version Checking against GitHub
     try:
-        BPversion = "pre-v3.0.0"
+        BPversion = "live-v3.0.0"
         GHAPIjson = json.loads(requests.get("https://api.github.com/repos/Quasky/bridgeipelago/releases/latest").content)
         if(GHAPIjson["tag_name"] != BPversion):
             print("You are not running the current release of Bridgeipelago.")
@@ -1891,18 +1929,18 @@ def main():
 
         # Wait for game dump to be created by tracker client
         while not CheckGameDump():
-            print(f"== waiting for {GetCoreFiles("archgamedump")} to be created on when data package is received")
+            print("== waiting for " + GetCoreFiles("archgamedump") + " to be created on when data package is received")
             time.sleep(2)
 
         # Wait for connection dump to be created by tracker client
         while not CheckConnectionDump():
-            print(f"== waiting for {GetCoreFiles("archconnectiondump")} to be created on room connection")
+            print("== waiting for " + GetCoreFiles("archconnectiondump") + " to be created on room connection")
             time.sleep(2)
 
         print("== Arch Data Loaded!")
         time.sleep(3)
 
-    DiscordThread = Process(target=Discord, args=(CoreConfig,ToggleConfig))
+    DiscordThread = Process(target=Discord, args=(CoreConfig,ToggleConfig, item_queue, death_queue, chat_queue, seppuku_queue, discordseppuku_queue, websocket_queue, lottery_queue, discordbridge_queue, hint_queue, hintprocessing_queue))
     DiscordThread.start()
 
     DiscordCycleCount = 0
@@ -1960,7 +1998,7 @@ def main():
                 time.sleep(3)
 
                 print("++ Starting the discord thread again")
-                DiscordThread = Process(target=Discord, args=(CoreConfig,ToggleConfig))
+                DiscordThread = Process(target=Discord, args=(CoreConfig,ToggleConfig, item_queue, death_queue, chat_queue, seppuku_queue, discordseppuku_queue, websocket_queue, lottery_queue, discordbridge_queue, hint_queue, hintprocessing_queue))
                 DiscordThread.start()
                 DiscordCycleCount = 0
         
@@ -1971,7 +2009,7 @@ def main():
             print("++ Sleeping for 3 seconds to allow the discord thread to close")
             time.sleep(3)
             print("++ Starting the discord thread again")
-            DiscordThread = Process(target=Discord, args=(CoreConfig,ToggleConfig))
+            DiscordThread = Process(target=Discord, args=(CoreConfig,ToggleConfig, item_queue, death_queue, chat_queue, seppuku_queue, discordseppuku_queue, websocket_queue, lottery_queue, discordbridge_queue, hint_queue, hintprocessing_queue))
             DiscordThread.start()
             
         if not hint_queue.empty():
